@@ -74,7 +74,7 @@ async function pushToGuardians(fid: string, a: AlertInput, alertId: string): Pro
       notification: {
         channelId: isSos ? "sos" : "alerts",
         priority: isSos ? "max" : "high",
-        sound: isSos ? "sos" : "default",
+        sound: "default",
         visibility: "public",
       },
     },
@@ -82,7 +82,8 @@ async function pushToGuardians(fid: string, a: AlertInput, alertId: string): Pro
       headers: { "apns-priority": "10", "apns-push-type": "alert" },
       payload: {
         aps: isSos
-          ? { sound: { critical: true, name: "sos.caf", volume: 1 }, "interruption-level": "critical" }
+          ? // Critical alerts bypass silent mode once Apple grants the entitlement; otherwise iOS treats this as time-sensitive.
+            { sound: { critical: true, name: "default", volume: 1 }, "interruption-level": "critical" }
           : { sound: "default", "interruption-level": "time-sensitive" },
       },
     },

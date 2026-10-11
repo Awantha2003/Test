@@ -12,7 +12,9 @@ import { checkoutHash, checkoutUrl, formatAmount, PAYHERE_STATUS, PayHereNotify,
 import { audit } from "./lib/audit";
 
 export const PAYHERE_MERCHANT_ID = defineString("PAYHERE_MERCHANT_ID");
+/** PayHere issues one merchant secret per whitelisted domain and per mobile app package. */
 export const PAYHERE_MERCHANT_SECRET = defineSecret("PAYHERE_MERCHANT_SECRET");
+export const PAYHERE_APP_MERCHANT_SECRET = defineSecret("PAYHERE_APP_MERCHANT_SECRET");
 export const PAYHERE_SANDBOX = defineBoolean("PAYHERE_SANDBOX", { default: true });
 export const PUBLIC_WEB_URL = defineString("PUBLIC_WEB_URL", { default: "https://rakawala.lk" });
 export const PAYHERE_NOTIFY_URL = defineString("PAYHERE_NOTIFY_URL");
@@ -26,7 +28,10 @@ export async function loadPlan(planId: string): Promise<Plan | null> {
 /** Builds signed PayHere checkout params. The merchant secret never leaves the server. */
 export const createCheckout = onCall(callable({ secrets: [PAYHERE_MERCHANT_SECRET] }), async (req) => {
   const c = requireParent(req);
-  const { planId } = parse(z.object({ planId: z.string().regex(/^[a-z0-9_]{1,40}$/) }), req.data);
+  const { planId, channel } = parse(
+    z.object({ planId: z.string().regex(/^[a-z0-9_]{1,40}$/), channel: z.enum(["web", "app"]).default("web") }),
+    req.data,
+  );
   await rateLimit(`checkout:${c.uid}`, 10, 3600);
 
   const plan = await loadPlan(planId);
@@ -75,7 +80,10 @@ export const createCheckout = onCall(callable({ secrets: [PAYHERE_MERCHANT_SECRE
       country: "Sri Lanka",
       custom_1: c.familyId,
       custom_2: plan.id,
-      hash: checkoutHash(merchantId, orderId, plan.priceLkr, currency, PAYHERE_MERCHANT_SECRET.value()),
+      // The web checkout form needs a hash. The mobile SDK authenticates via the app's package name instead.
+      ...(channel === "web"
+        ? { hash: checkoutHash(merchantId, orderId, plan.priceLkr, currency, PAYHERE_MERCHANT_SECRET.value()) }
+        : {}),
     },
     familyName: fam.get("name") ?? "",
   };
@@ -87,14 +95,16 @@ export const createCheckout = onCall(callable({ secrets: [PAYHERE_MERCHANT_SECRE
  * against our own order record. Idempotent per payment_id.
  */
 export const payhereNotify = onRequest(
-  { secrets: [PAYHERE_MERCHANT_SECRET], cors: false, maxInstances: 10 },
+  { secrets: [PAYHERE_MERCHANT_SECRET, PAYHERE_APP_MERCHANT_SECRET], cors: false, maxInstances: 10 },
   async (req, res) => {
     if (req.method !== "POST") {
       res.status(405).send("Method not allowed");
       return;
     }
     const n = req.body as PayHereNotify;
-    if (!verifyNotify(n, PAYHERE_MERCHANT_ID.value(), PAYHERE_MERCHANT_SECRET.value())) {
+    const merchantId = PAYHERE_MERCHANT_ID.value();
+    const secrets = [PAYHERE_MERCHANT_SECRET.value(), PAYHERE_APP_MERCHANT_SECRET.value()].filter(Boolean);
+    if (!secrets.some((secret) => verifyNotify(n, merchantId, secret))) {
       logger.warn("payhere signature mismatch", { order: String(n?.order_id ?? "").slice(0, 40) });
       res.status(400).send("Invalid signature");
       return;
