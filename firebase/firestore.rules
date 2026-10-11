@@ -1,0 +1,175 @@
+rules_version = '2';
+
+// Rakawala Firestore security rules.
+//
+// Principles (see docs/SECURITY.md):
+//  * Deny by default. Every allowed path is listed explicitly.
+//  * Tenancy comes from custom claims (familyId, role) which only Cloud Functions set.
+//  * Anything that affects billing, limits, pairing or alerts is written by Functions only.
+//  * Admins manage the business (plans, site content, accounts) but cannot read
+//    children's live location or history.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- helpers ----------
+    function signedIn() {
+      return request.auth != null;
+    }
+    function claims() {
+      return request.auth.token;
+    }
+    function isAdmin() {
+      return signedIn() && claims().get('admin', false) == true;
+    }
+    function inFamily(fid) {
+      return signedIn() && claims().get('familyId', '') == fid;
+    }
+    function isParentOf(fid) {
+      return inFamily(fid) && claims().get('role', '') == 'parent';
+    }
+    function isChildOf(fid) {
+      return inFamily(fid) && claims().get('role', '') == 'child';
+    }
+    function onlyChanges(allowed) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
+    }
+    function isNum(v) {
+      return v is int || v is float;
+    }
+    function inRange(v, lo, hi) {
+      return isNum(v) && v >= lo && v <= hi;
+    }
+    function shortString(v, max) {
+      return v is string && v.size() > 0 && v.size() <= max;
+    }
+
+    // ---------- users ----------
+    match /users/{uid} {
+      allow read: if (signedIn() && request.auth.uid == uid) || isAdmin();
+      // Profile documents are created by Functions. Users may edit cosmetic fields only.
+      allow update: if signedIn() && request.auth.uid == uid
+        && onlyChanges(['displayName', 'phone', 'locale', 'updatedAt'])
+        && (!('displayName' in request.resource.data) || shortString(request.resource.data.displayName, 60))
+        && (!('phone' in request.resource.data) || request.resource.data.phone == null
+            || request.resource.data.phone.matches('^\\+?[0-9]{9,15}$'))
+        && (!('locale' in request.resource.data) || request.resource.data.locale in ['en', 'si', 'ta']);
+
+      match /devices/{deviceId} {
+        allow read, delete: if signedIn() && request.auth.uid == uid;
+        allow create, update: if signedIn() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['token', 'platform', 'updatedAt'])
+          && shortString(request.resource.data.token, 4096)
+          && request.resource.data.platform in ['android', 'ios', 'web']
+          && request.resource.data.updatedAt == request.time;
+      }
+    }
+
+    // ---------- families ----------
+    match /families/{fid} {
+      allow read: if inFamily(fid) || isAdmin();
+      // Only the family display name is client-editable. Plan, limits and owner are Functions-only.
+      allow update: if isParentOf(fid)
+        && onlyChanges(['name', 'updatedAt'])
+        && shortString(request.resource.data.name, 60);
+
+      match /members/{uid} {
+        allow read: if inFamily(fid) || isAdmin();
+        allow update: if isParentOf(fid) && request.auth.uid == uid
+          && onlyChanges(['name', 'phone', 'smsAlerts'])
+          && shortString(request.resource.data.name, 60)
+          && (request.resource.data.get('phone', null) == null
+              || request.resource.data.phone.matches('^\\+?[0-9]{9,15}$'))
+          && request.resource.data.get('smsAlerts', true) is bool;
+      }
+
+      match /children/{cid} {
+        allow read: if isParentOf(fid) || (isChildOf(fid) && request.auth.uid == cid) || isAdmin();
+        allow update: if isParentOf(fid)
+          && onlyChanges(['name', 'color', 'settings', 'updatedAt'])
+          && shortString(request.resource.data.name, 40)
+          && request.resource.data.color is string
+          && validChildSettings(request.resource.data.settings);
+      }
+
+      function validChildSettings(s) {
+        return s is map
+          && s.keys().hasOnly(['speedLimitKmh', 'lowBatteryPct', 'guardMode', 'voiceSos', 'safeWord', 'offlineAlertMin'])
+          && inRange(s.get('speedLimitKmh', 70), 20, 200)
+          && inRange(s.get('lowBatteryPct', 15), 5, 50)
+          && s.get('guardMode', true) is bool
+          && s.get('voiceSos', false) is bool
+          && (s.get('safeWord', '') == '' || shortString(s.get('safeWord', ''), 40))
+          && inRange(s.get('offlineAlertMin', 45), 15, 720);
+      }
+
+      // Live location: only the paired child device writes, only its own doc, strict schema.
+      match /live/{cid} {
+        allow read: if isParentOf(fid) || (isChildOf(fid) && request.auth.uid == cid);
+        allow create, update: if isChildOf(fid) && request.auth.uid == cid
+          && request.resource.data.keys().hasOnly(['lat', 'lng', 'accuracy', 'speed', 'heading', 'battery', 'charging', 'ts', 'source'])
+          && inRange(request.resource.data.lat, -90, 90)
+          && inRange(request.resource.data.lng, -180, 180)
+          && inRange(request.resource.data.accuracy, 0, 100000)
+          && inRange(request.resource.data.get('speed', 0), -1, 200)
+          && inRange(request.resource.data.get('heading', 0), -1, 360)
+          && inRange(request.resource.data.get('battery', 100), 0, 100)
+          && request.resource.data.get('charging', false) is bool
+          && request.resource.data.get('source', 'gps') in ['gps', 'network', 'heartbeat', 'sos']
+          && request.resource.data.ts == request.time;
+        allow delete: if false;
+      }
+
+      // History, geofence state and alerts are produced by Functions.
+      match /history/{hid} {
+        allow read: if isParentOf(fid);
+      }
+      match /places/{pid} {
+        allow read: if isParentOf(fid);
+      }
+      match /schedules/{sid} {
+        allow read: if isParentOf(fid);
+      }
+      match /alerts/{aid} {
+        allow read: if isParentOf(fid);
+      }
+      match /geostate/{cid} {
+        allow read: if isParentOf(fid);
+      }
+    }
+
+    // ---------- payments ----------
+    match /payments/{orderId} {
+      allow read: if isAdmin() || (signedIn() && isParentOf(resource.data.familyId));
+    }
+
+    // ---------- public catalogue & CMS ----------
+    match /plans/{planId} {
+      allow read: if true;
+      allow write: if isAdmin()
+        && request.resource.data.keys().hasAll(['name', 'priceLkr', 'interval', 'limits', 'features', 'active', 'order'])
+        && shortString(request.resource.data.name, 40)
+        && inRange(request.resource.data.priceLkr, 0, 1000000)
+        && request.resource.data.interval in ['month', 'year', 'free']
+        && request.resource.data.limits is map
+        && request.resource.data.features is list
+        && request.resource.data.active is bool;
+      allow delete: if isAdmin();
+    }
+
+    match /siteContent/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ---------- admin-only views ----------
+    match /auditLogs/{id} {
+      allow read: if isAdmin();
+    }
+
+    // pairingCodes, rateLimits and anything else: Functions only (Admin SDK bypasses rules).
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

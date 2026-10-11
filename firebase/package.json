@@ -1,0 +1,14 @@
+{
+  "name": "rakawala-firebase",
+  "private": true,
+  "scripts": {
+    "test:rules": "firebase emulators:exec --only firestore --project demo-rakawala \"tsx --test tests/rules.test.ts\"",
+    "emulators": "firebase emulators:start --project demo-rakawala"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.0",
+    "firebase-tools": "^14.0.0",
+    "tsx": "^4.19.0"
+  }
+}
