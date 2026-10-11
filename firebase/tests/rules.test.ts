@@ -48,7 +48,9 @@ beforeEach(async () => {
 
 const parent = (fid = FAM_A) => env.authenticatedContext(`${fid}-mom`, { role: "parent", familyId: fid }).firestore();
 const child = (fid = FAM_A) => env.authenticatedContext(`${fid}-kid`, { role: "child", familyId: fid }).firestore();
-const admin = () => env.authenticatedContext("admin1", { admin: true }).firestore();
+const admin = () =>
+  env.authenticatedContext("admin1", { admin: true, firebase: { sign_in_provider: "password", sign_in_second_factor: "totp" } }).firestore();
+const adminNoMfa = () => env.authenticatedContext("admin2", { admin: true, firebase: { sign_in_provider: "password" } }).firestore();
 const anon = () => env.unauthenticatedContext().firestore();
 const stranger = () => env.authenticatedContext("eve", {}).firestore();
 
@@ -185,6 +187,14 @@ test("admin manages plans and site content; public can read them", async () => {
   await assertSucceeds(setDoc(doc(admin(), "siteContent/home"), { heroTitle: "Hi" }));
   await assertFails(setDoc(doc(parent(), "siteContent/home"), { heroTitle: "Hacked" }));
   await assertSucceeds(getDoc(doc(anon(), "siteContent/home")));
+});
+
+test("admin without a second factor is treated as a normal user", async () => {
+  const db = adminNoMfa();
+  await assertFails(getDoc(doc(db, `families/${FAM_A}`)));
+  await assertFails(getDoc(doc(db, "users/famA-mom")));
+  await assertFails(setDoc(doc(db, "siteContent/home"), { heroTitle: "Hacked" }));
+  await assertFails(getDocs(collection(db, "auditLogs")));
 });
 
 test("admin can see accounts but NOT children's live location or history", async () => {

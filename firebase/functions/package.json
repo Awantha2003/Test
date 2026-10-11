@@ -7,8 +7,7 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "tsx --test test/*.test.ts",
-    "grant-admin": "tsx scripts/grant-admin.ts",
-    "seed": "tsx scripts/seed.ts"
+    "grant-admin": "tsx scripts/grant-admin.ts"
   },
   "dependencies": {
     "firebase-admin": "^13.0.0",

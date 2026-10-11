@@ -39,6 +39,7 @@ export const createCheckout = onCall(callable({ secrets: [PAYHERE_MERCHANT_SECRE
     throw new HttpsError("invalid-argument", "That plan isn't available.");
   }
   const [user, fam] = await Promise.all([db.collection("users").doc(c.uid).get(), familyRef(c.familyId).get()]);
+  if (fam.get("ownerUid") !== c.uid) throw new HttpsError("permission-denied", "Only the family owner can change the plan.");
   const orderId = `RK${Date.now().toString(36).toUpperCase()}${randomBytes(4).toString("hex").toUpperCase()}`;
   const amount = formatAmount(plan.priceLkr);
   const currency = "LKR";

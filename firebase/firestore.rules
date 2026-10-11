@@ -19,8 +19,11 @@ service cloud.firestore {
     function claims() {
       return request.auth.token;
     }
+    // Admins must also have signed in with a second factor (TOTP). A stolen admin
+    // password alone opens nothing.
     function isAdmin() {
-      return signedIn() && claims().get('admin', false) == true;
+      return signedIn() && claims().get('admin', false) == true
+        && claims().get('firebase', {}).get('sign_in_second_factor', null) != null;
     }
     function inFamily(fid) {
       return signedIn() && claims().get('familyId', '') == fid;
