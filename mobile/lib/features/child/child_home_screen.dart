@@ -8,7 +8,10 @@ import '../../core/config.dart';
 import '../../core/theme.dart';
 import '../../data/models.dart';
 import '../../data/providers.dart';
+import 'package:app_control/app_control.dart';
+
 import '../../services/background_service.dart';
+import '../../services/device_status.dart';
 import '../../services/offline_trail.dart';
 import '../../services/permissions.dart';
 import '../../services/sos_service.dart';
@@ -29,6 +32,8 @@ class _ChildHomeScreenState extends ConsumerState<ChildHomeScreen> with WidgetsB
   SharingReadiness? _readiness;
   bool _sharing = false;
   int _pendingTrail = 0;
+  bool _protected = true;
+  final _status = DeviceStatusReporter();
   bool _sending = false;
   VoiceGuard? _voice;
   String _voiceStatus = '';
@@ -59,11 +64,15 @@ class _ChildHomeScreenState extends ConsumerState<ChildHomeScreen> with WidgetsB
     }
     final running = await BackgroundSharing.isRunning();
     final pending = await OfflineTrailBuffer().count();
+    final protectedNow = !AppControl.supported || await AppControl.protectionActive();
+    // Report right away (e.g. after a permission change), so guardians are told promptly.
+    await _status.report(force: true);
     if (mounted) {
       setState(() {
         _readiness = r;
         _sharing = running;
         _pendingTrail = pending;
+        _protected = protectedNow;
       });
     }
   }
@@ -201,6 +210,8 @@ class _ChildHomeScreenState extends ConsumerState<ChildHomeScreen> with WidgetsB
             ),
           ],
           const SizedBox(height: 12),
+          _ProtectionCard(familyName: ref.watch(familyProvider).value?.name, protectedNow: _protected, onDone: _refresh),
+          const SizedBox(height: 12),
           const AppControlsCard(),
           const SectionHeader('Call'),
           ...guardians.where((g) => (g.phone ?? '').isNotEmpty).map((g) => Padding(
@@ -275,6 +286,47 @@ class _PermissionCard extends StatelessWidget {
             },
             child: Text(action),
           ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Tells the child plainly that only a parent can disconnect this phone, and (Android)
+/// offers uninstall protection, which the guardian sets up together with the child.
+class _ProtectionCard extends StatelessWidget {
+  const _ProtectionCard({required this.familyName, required this.protectedNow, required this.onDone});
+  final String? familyName;
+  final bool protectedNow;
+  final Future<void> Function() onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Icon(protectedNow ? Icons.verified_user_rounded : Icons.gpp_maybe_rounded, color: protectedNow ? AppColors.safe : AppColors.warn),
+            const SizedBox(width: 8),
+            Expanded(child: Text('Connected to ${familyName ?? 'your family'}', style: t.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700))),
+          ]),
+          const SizedBox(height: 6),
+          const Text('Only your parent can disconnect this phone. If location or protection is switched off, your parent is told.'),
+          if (!protectedNow) ...[
+            const SizedBox(height: 12),
+            FilledButton.tonalIcon(
+              onPressed: () async {
+                await AppControl.requestProtection();
+                await onDone();
+              },
+              icon: const Icon(Icons.lock_rounded),
+              label: const Text('Turn on uninstall protection'),
+            ),
+            const SizedBox(height: 4),
+            Text('It can\'t read your data, lock or erase your phone.', style: t.textTheme.bodySmall),
+          ],
         ]),
       ),
     );

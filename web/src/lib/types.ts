@@ -46,7 +46,7 @@ export interface Live {
 }
 
 export interface Alert {
-  type: "sos" | "enter" | "exit" | "late" | "battery" | "offline" | "speed" | "checkin" | "apps";
+  type: "sos" | "enter" | "exit" | "late" | "battery" | "offline" | "speed" | "checkin" | "apps" | "device";
   childId: string;
   childName: string;
   title: string;

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../../core/theme.dart';
 import '../../data/models.dart';
 import '../../data/providers.dart';
 import '../../widgets/common.dart';
@@ -169,6 +170,8 @@ class _ChildDetailScreenState extends ConsumerState<ChildDetailScreen> {
           ),
         ),
         const SectionHeader('Device'),
+        _ProtectionStatus(childId: child.id, childName: child.name),
+        const SizedBox(height: 8),
         Card(
           child: Column(children: [
             ListTile(
@@ -233,4 +236,44 @@ class _ChildDetailScreenState extends ConsumerState<ChildDetailScreen> {
             ),
         ]),
       );
+}
+
+/// What the child's phone last reported about its protection. A child can't disconnect
+/// from inside the app; this shows whether they've weakened it from the phone's settings.
+class _ProtectionStatus extends ConsumerWidget {
+  const _ProtectionStatus({required this.childId, required this.childName});
+  final String childId;
+  final String childName;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final s = ref.watch(deviceStatusProvider(childId)).value;
+    if (s == null) {
+      return const Card(child: ListTile(leading: Icon(Icons.hourglass_empty_rounded), title: Text('Waiting for the phone to report its protection status')));
+    }
+    Widget row(IconData icon, String title, String value, bool ok) => ListTile(
+          dense: true,
+          leading: Icon(icon),
+          title: Text(title),
+          trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+            Text(value, style: TextStyle(color: ok ? AppColors.safe : AppColors.sos, fontWeight: FontWeight.w700)),
+            const SizedBox(width: 6),
+            Icon(ok ? Icons.check_circle_rounded : Icons.error_rounded, size: 18, color: ok ? AppColors.safe : AppColors.sos),
+          ]),
+        );
+    return Card(
+      child: Column(children: [
+        ListTile(
+          leading: Icon(s.fullyProtected ? Icons.verified_user_rounded : Icons.gpp_maybe_rounded, color: s.fullyProtected ? AppColors.safe : AppColors.sos),
+          title: Text(s.fullyProtected ? 'Fully protected' : 'Protection weakened', style: const TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text('Only you can disconnect $childName\'s phone · reported ${timeAgo(s.ts)}'),
+        ),
+        row(Icons.location_on_rounded, 'Location access',
+            switch (s.locationPermission) { 'always' => 'All the time', 'whileInUse' => 'Only while open', _ => 'Blocked' }, s.locationPermission == 'always'),
+        row(Icons.gps_fixed_rounded, 'Phone location (GPS)', s.locationService ? 'On' : 'Off', s.locationService),
+        if (s.uninstallProtection != null)
+          row(Icons.lock_rounded, 'Uninstall protection', s.uninstallProtection! ? 'On' : 'Off', s.uninstallProtection!),
+      ]),
+    );
+  }
 }

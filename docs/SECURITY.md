@@ -57,6 +57,18 @@ Security is therefore designed in from the start, not bolted on.
    - Cloud Logging alerts on pairing failures, IPN signature failures and admin actions.
    - Uptime check on `payhereNotify`.
 
+### Only a guardian can disconnect a child's phone
+
+- The child app has **no** sign-out, unpair or settings screen. The router locks a child session to `/child`.
+- Unpairing (`removeChild`) and every family change are guardian-only callables. Rules forbid the child from deleting or rewriting its child, member, family or live documents (tested).
+- Reinstalling or clearing app data drops the session. Re-pairing needs a **new code that only a guardian can create**.
+- What a child *can* still do from phone settings is detected and reported. The phone writes `deviceStatus`, and `onDeviceStatus` alerts every guardian when any of these happen:
+  - location access is reduced or blocked;
+  - GPS is switched off;
+  - **uninstall protection** is switched off.
+- Uninstall protection is an Android device-admin receiver with **no policies** (it can't lock, wipe or read anything). Android then requires switching it off before uninstalling, and switching it off is reported.
+- Uninstalling or force-stopping still ends in the "phone stopped sharing" heartbeat alert.
+
 ### App controls & live track: privacy guardrails
 
 - **AccessibilityService** (`AppBlockerService`):

@@ -10,6 +10,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../firebase_options.dart';
 import 'app_control_sync.dart';
+import 'device_status.dart';
 import 'location_tracker.dart';
 
 const sharingChannelId = 'sharing';
@@ -90,7 +91,10 @@ Future<void> backgroundEntryPoint(ServiceInstance service) async {
     await apps.start();
   }
 
+  final status = DeviceStatusReporter()..start();
+
   service.on('stop').listen((_) async {
+    status.stop();
     await apps?.stop();
     await tracker.stop();
     await service.stopSelf();

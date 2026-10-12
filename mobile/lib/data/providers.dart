@@ -154,3 +154,29 @@ final appRulesProvider = StreamProvider.family<AppRules, String>((ref, childId) 
   if (s?.familyId == null) return Stream.value(AppRules.empty);
   return familyCol(s!.familyId!, 'appRules').doc(childId).snapshots().map((d) => AppRules.fromMap(d.data()));
 });
+
+// ---------- child device protection ----------
+
+class DeviceStatus {
+  DeviceStatus({required this.locationPermission, required this.locationService, this.uninstallProtection, required this.platform, this.ts});
+  final String locationPermission; // always | whileInUse | denied
+  final bool locationService;
+  final bool? uninstallProtection; // null on iPhone
+  final String platform;
+  final DateTime? ts;
+
+  bool get fullyProtected => locationPermission == 'always' && locationService && (uninstallProtection ?? true);
+
+  static DeviceStatus fromMap(Map<String, dynamic> m) => DeviceStatus(
+        locationPermission: m['locationPermission'] as String? ?? 'denied',
+        locationService: m['locationService'] as bool? ?? false,
+        uninstallProtection: m['uninstallProtection'] as bool?,
+        platform: m['platform'] as String? ?? 'android',
+        ts: (m['ts'] as Timestamp?)?.toDate(),
+      );
+}
+
+final deviceStatusProvider = StreamProvider.family<DeviceStatus?, String>((ref, childId) {
+  final fid = _requireFamily(ref);
+  return familyCol(fid, 'deviceStatus').doc(childId).snapshots().map((d) => d.exists ? DeviceStatus.fromMap(d.data()!) : null);
+});

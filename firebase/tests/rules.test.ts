@@ -248,3 +248,23 @@ test("app usage: only the child phone reports it, only parents read it", async (
 test("parents can't switch on live mode directly (server-only, rate-limited)", async () => {
   await assertFails(updateDoc(doc(parent(), `families/${FAM_A}/children/${FAM_A}-kid`), { liveUntil: new Date(2030, 1, 1) }));
 });
+
+// ---------- only a guardian can disconnect a child ----------
+
+test("child phone can't remove itself, its membership or the family", async () => {
+  const db = child();
+  await assertFails(deleteDoc(doc(db, `families/${FAM_A}/children/${FAM_A}-kid`)));
+  await assertFails(deleteDoc(doc(db, `families/${FAM_A}/members/${FAM_A}-kid`)));
+  await assertFails(deleteDoc(doc(db, `families/${FAM_A}/live/${FAM_A}-kid`)));
+  await assertFails(deleteDoc(doc(db, `families/${FAM_A}`)));
+  await assertFails(setDoc(doc(db, `families/${FAM_A}/members/${FAM_A}-kid`), { role: "parent", name: "Kid" }));
+});
+
+test("device status: written only by the child phone, schema-checked, read by guardians", async () => {
+  const status = { locationPermission: "always", locationService: true, uninstallProtection: true, platform: "android", appVersion: "1.0.0", ts: serverTimestamp() };
+  await assertSucceeds(setDoc(doc(child(), `families/${FAM_A}/deviceStatus/${FAM_A}-kid`), status));
+  await assertFails(setDoc(doc(child(), `families/${FAM_A}/deviceStatus/${FAM_A}-kid`), { ...status, locationPermission: "sometimes" }));
+  await assertFails(setDoc(doc(parent(), `families/${FAM_A}/deviceStatus/${FAM_A}-kid`), status));
+  await assertSucceeds(getDoc(doc(parent(), `families/${FAM_A}/deviceStatus/${FAM_A}-kid`)));
+  await assertFails(getDoc(doc(parent(FAM_B), `families/${FAM_A}/deviceStatus/${FAM_A}-kid`)));
+});

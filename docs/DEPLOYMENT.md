@@ -97,6 +97,10 @@ flutter build ipa --release --obfuscate --split-debug-info=build/symbols  # same
   - Complete the **AccessibilityService API declaration** (parental-control use, prominent disclosure, consent screen and video). The in-app card on the child phone is the disclosure.
   - Explain `PACKAGE_USAGE_STATS` in the data safety form.
   - Expect a manual review.
+- **Uninstall protection (Google Play)**:
+  - It uses the Device Admin API with no policies.
+  - Declare it under parental control in the Play Console permissions declaration.
+  - Keep the in-app explanation on the child phone, which is the disclosure.
 - **Live track routing**:
   - The road route uses an OSRM-compatible server (`--dart-define=ROUTING_URL=...`).
   - The public demo server is for testing only. Self-host OSRM with the Sri Lanka OSM extract, or use a provider.

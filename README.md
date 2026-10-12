@@ -21,6 +21,7 @@
 - **App controls (Android)**:
   - Lamaya use karana apps saha welawa balanna puluwan.
   - Ona nathi apps block karanna, School time / Bedtime wala apps pause karanna, daily time limit danna puluwan.
+- **Lamayata disconnect karanna ba**: amma / thaththa ta witharai puluwan. Lamaya location off kaloth, permission adu kaloth, nathnam uninstall protection eka off kaloth amma ta auto alert.
 - **Payments**: PayHere (LKR) monthly/yearly subscriptions.
 - **Security**: cyber-security threat model එකක් (STRIDE) අනුව design කරලා තියෙන්නේ. `docs/SECURITY.md` බලන්න.
 
@@ -40,10 +41,10 @@
 
 | Check | Result |
 |---|---|
-| Cloud Functions typecheck + unit tests (geofence, PayHere, plans, codes, schedules, offline trail, app alerts) | 27/27 ✅ |
-| Firestore security-rules tests on the emulator (tenancy, tampering, admin MFA, privacy, app controls, live mode) | 25/25 ✅ |
+| Cloud Functions typecheck + unit tests (geofence, PayHere, plans, codes, schedules, offline trail, app & tamper alerts) | 30/30 ✅ |
+| Firestore security-rules tests on the emulator (tenancy, tampering, admin MFA, privacy, app controls, live mode, child can't disconnect) | 27/27 ✅ |
 | Flutter `analyze` | no issues ✅ |
-| Flutter tests (router guards, SOS hold, voice word, offline queue, live track, app rule engine) | 42/42 ✅ |
+| Flutter tests (router guards, SOS hold, voice word, offline queue, live track, app rule engine, device status) | 46/46 ✅ |
 | Android plugin Kotlin: compiles against Android 14 + rule-engine parity with Dart | 18/18 ✅ |
 | Web typecheck + tests + production build | ✅ |
 | `npm audit` (high) on functions and web | 0 ✅ |

@@ -7,7 +7,7 @@ export const NOTIFYLK_USER_ID = defineString("NOTIFYLK_USER_ID", { default: "" }
 export const NOTIFYLK_SENDER_ID = defineString("NOTIFYLK_SENDER_ID", { default: "NotifyDEMO" });
 export const NOTIFYLK_API_KEY = defineSecret("NOTIFYLK_API_KEY");
 
-export type AlertType = "sos" | "enter" | "exit" | "late" | "battery" | "offline" | "speed" | "checkin" | "apps";
+export type AlertType = "sos" | "enter" | "exit" | "late" | "battery" | "offline" | "speed" | "checkin" | "apps" | "device";
 
 export interface AlertInput {
   type: AlertType;

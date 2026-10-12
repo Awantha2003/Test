@@ -31,6 +31,8 @@ class AppControlPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
                 "openAccessibilitySettings" -> { open(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)); result.success(null) }
                 "installedApps" -> result.success(UsageReader.installedApps(ctx))
                 "usageToday" -> result.success(UsageReader.usageToday(ctx))
+                "protectionStatus" -> result.success(mapOf("active" to UninstallGuard.isActive(ctx), "disabledAt" to UninstallGuard.disabledAt(ctx)))
+                "requestProtection" -> { open(UninstallGuard.activationIntent(ctx)); result.success(null) }
                 "setRules" -> { RuleStore.save(ctx, call.arguments as? String ?: "{}"); result.success(null) }
                 else -> result.notImplemented()
             }

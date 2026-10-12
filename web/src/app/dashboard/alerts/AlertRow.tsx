@@ -1,6 +1,6 @@
 "use client";
 
-import { AppWindow, BatteryWarning, Gauge, LogIn, LogOut, Siren, AlarmClock, WifiOff, ShieldCheck } from "lucide-react";
+import { AppWindow, ShieldAlert, BatteryWarning, Gauge, LogIn, LogOut, Siren, AlarmClock, WifiOff, ShieldCheck } from "lucide-react";
 import clsx from "clsx";
 import { Alert, timeAgo } from "@/lib/types";
 import type { WithId } from "@/lib/hooks";
@@ -15,6 +15,7 @@ const style: Record<Alert["type"], { icon: typeof Siren; cls: string }> = {
   speed: { icon: Gauge, cls: "bg-amber-100 text-warn" },
   checkin: { icon: ShieldCheck, cls: "bg-emerald-100 text-safe" },
   apps: { icon: AppWindow, cls: "bg-blue-100 text-brand-600" },
+  device: { icon: ShieldAlert, cls: "bg-red-100 text-sos" },
 };
 
 export function AlertRow({ alert, compact = false, action }: { alert: WithId<Alert>; compact?: boolean; action?: React.ReactNode }) {

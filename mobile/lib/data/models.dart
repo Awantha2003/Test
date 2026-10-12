@@ -223,7 +223,7 @@ class Schedule {
   }
 }
 
-enum AlertType { sos, enter, exit, late, battery, offline, speed, checkin, apps }
+enum AlertType { sos, enter, exit, late, battery, offline, speed, checkin, apps, device }
 
 class AlertItem {
   AlertItem({required this.id, required this.type, required this.childId, required this.childName, required this.title, required this.body, this.lat, this.lng, this.createdAt, required this.status});

@@ -140,6 +140,19 @@ service cloud.firestore {
         allow read: if isParentOf(fid);
       }
 
+      // ---------- device protection status (written by the child phone) ----------
+      match /deviceStatus/{cid} {
+        allow read: if isParentOf(fid);
+        allow create, update: if isChildOf(fid) && request.auth.uid == cid
+          && request.resource.data.keys().hasOnly(['locationPermission', 'locationService', 'uninstallProtection', 'platform', 'appVersion', 'ts'])
+          && request.resource.data.locationPermission in ['always', 'whileInUse', 'denied']
+          && request.resource.data.locationService is bool
+          && (request.resource.data.uninstallProtection == null || request.resource.data.uninstallProtection is bool)
+          && request.resource.data.platform in ['android', 'ios']
+          && (!('appVersion' in request.resource.data) || shortString(request.resource.data.appVersion, 20))
+          && request.resource.data.ts == request.time;
+      }
+
       // ---------- app controls (Android) ----------
       function planAllowsAppControls() {
         return get(/databases/$(database)/documents/families/$(fid)).data.get('limits', {}).get('appControls', false) == true;

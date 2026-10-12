@@ -52,6 +52,16 @@ class AppControl {
     return {for (final e in m.entries) e.key: ((e.value as num) / 60000).round()}..removeWhere((_, v) => v <= 0);
   }
 
+  /// Uninstall protection (a device-admin with no policies). Android only.
+  static Future<bool> protectionActive() async {
+    if (!supported) return false;
+    final m = await _channel.invokeMapMethod<String, Object?>('protectionStatus') ?? const {};
+    return m['active'] == true;
+  }
+
+  /// Opens Android's own "Activate device admin app?" screen.
+  static Future<void> requestProtection() => supported ? _channel.invokeMethod('requestProtection') : Future.value();
+
   /// Hands the guardian's rules to the on-device blocker (persisted natively).
   static Future<void> setRules(AppRules rules) => supported ? _channel.invokeMethod('setRules', rules.toJson()) : Future.value();
 }
