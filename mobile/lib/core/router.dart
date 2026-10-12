@@ -10,6 +10,7 @@ import '../features/child/child_home_screen.dart';
 import '../features/child/pair_screen.dart';
 import '../features/onboarding/welcome_screen.dart';
 import '../features/parent/alerts_screen.dart';
+import '../features/parent/app_controls_screen.dart';
 import '../features/parent/child_detail_screen.dart';
 import '../features/parent/family_screen.dart';
 import '../features/parent/live_track_screen.dart';
@@ -76,6 +77,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/p/sos/:id', builder: (_, s) => SosScreen(alertId: s.pathParameters['id']!)),
       GoRoute(path: '/p/child/:id', builder: (_, s) => ChildDetailScreen(childId: s.pathParameters['id']!)),
+      GoRoute(path: '/p/apps/:id', builder: (_, s) => AppControlsScreen(childId: s.pathParameters['id']!)),
       GoRoute(path: '/p/live/:id', builder: (_, s) => LiveTrackScreen(childId: s.pathParameters['id']!)),
       GoRoute(path: '/p/place', builder: (_, s) => PlaceEditorScreen(place: s.extra as Place?)),
       GoRoute(path: '/p/schedules', builder: (_, _) => const SchedulesScreen()),

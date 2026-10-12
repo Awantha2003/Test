@@ -48,6 +48,7 @@ class Family {
   bool get isPaid => planId != 'free';
   bool get smsSos => limits['smsSos'] == true;
   bool get voiceSos => limits['voiceSos'] == true;
+  bool get appControls => limits['appControls'] == true;
 }
 
 class ChildSettings {

@@ -82,6 +82,12 @@ class _ChildDetailScreenState extends ConsumerState<ChildDetailScreen> {
           icon: const Icon(Icons.radar_rounded),
           label: const Text('Live track (updates every 5 s)'),
         ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () => context.push('/p/apps/${child.id}'),
+          icon: const Icon(Icons.app_settings_alt_rounded),
+          label: const Text('App controls & screen time'),
+        ),
         const SectionHeader('Safety settings'),
         Card(
           child: Column(children: [

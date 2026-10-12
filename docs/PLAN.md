@@ -31,6 +31,17 @@
     - **"No signal ahead" window.** The child or a guardian pauses offline alerts for a train ride or trip (`setOfflineWindow`), and guardians are told why.
     - **Critical battery (≤5%).** The phone grabs one last precise fix, and guardians get it by push (and SMS on paid plans) before the phone dies.
 
+13. **Live track.**
+    - A guardian opens Live track and sees their own position, the child moving in real time, the child's last-30-min path, and the road route between them (distance, drive time, navigate).
+    - The child phone switches to ~5 s updates only while someone is watching (max 30 min, `setLiveTracking`), and shows a "your family is viewing" banner.
+14. **App controls & screen time (Android, Family/Premium).**
+    - The guardian sees today's screen time and per-app minutes, and sets each app to *Allowed*, *Always allowed*, *Time limit* or *Blocked*.
+    - The guardian can pause all normal apps during **School time**, **Bedtime** and **Study time**, and set a daily screen-time limit.
+    - Enforcement runs on the phone. A local plugin (`mobile/packages/app_control`) uses UsageStats for minutes and an AccessibilityService that only sees *which app is in front*.
+    - Calls, SMS, launcher, Settings and Rakawala are never blocked.
+    - Guardians are alerted when controls are switched off or a new app is installed.
+    - iPhone needs Apple's Family Controls entitlement (roadmap).
+
 **Later (roadmap)**: school-van driver mode, crash/fall detection, wearables, Sinhala/Tamil TTS for alerts, WhatsApp alerts, and school (B2B) accounts.
 
 ## 2. Packages (default seed: fully editable in the admin panel)

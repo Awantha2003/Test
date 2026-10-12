@@ -15,6 +15,7 @@ const LIMIT_FIELDS: { key: string; label: string; type: "number" | "bool" }[] = 
   { key: "historyDays", label: "History days", type: "number" },
   { key: "smsSos", label: "SMS SOS", type: "bool" },
   { key: "voiceSos", label: "Voice SOS", type: "bool" },
+  { key: "appControls", label: "App controls", type: "bool" },
 ];
 
 const blank: WithId<Plan> = {
@@ -22,7 +23,7 @@ const blank: WithId<Plan> = {
   name: "",
   priceLkr: 0,
   interval: "month",
-  limits: { maxChildren: 1, maxPlaces: 2, maxSchedules: 1, maxGuardians: 0, historyDays: 1, smsSos: false, voiceSos: false },
+  limits: { maxChildren: 1, maxPlaces: 2, maxSchedules: 1, maxGuardians: 0, historyDays: 1, smsSos: false, voiceSos: false, appControls: false },
   features: [],
   active: true,
   order: 10,

@@ -1,3 +1,4 @@
+import 'package:app_control/app_rules.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -101,4 +102,55 @@ final guardiansProvider = StreamProvider<List<Member>>((ref) {
   final s = ref.watch(sessionProvider).value;
   if (s?.familyId == null) return Stream.value(const []);
   return familyCol(s!.familyId!, 'members').where('role', isEqualTo: 'parent').snapshots().map((q) => q.docs.map(Member.fromDoc).toList());
+});
+
+// ---------- app controls ----------
+
+class AppUsageReport {
+  AppUsageReport({required this.date, required this.apps, required this.totalMin, required this.installed, required this.usageAccess, required this.accessibility, this.ts});
+  final String date;
+  final Map<String, ({String name, int minutes})> apps;
+  final int totalMin;
+  final List<({String pkg, String name})> installed;
+  final bool usageAccess;
+  final bool accessibility;
+  final DateTime? ts;
+
+  bool get controlsOn => usageAccess && accessibility;
+
+  /// Usage numbers are for "today" on the child's phone; ignore yesterday's report.
+  bool get isToday => date == '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}';
+
+  static AppUsageReport fromMap(Map<String, dynamic> m) {
+    final apps = <String, ({String name, int minutes})>{};
+    (m['apps'] as Map?)?.forEach((k, v) {
+      final mm = (v as Map).cast<String, dynamic>();
+      apps[k as String] = (name: mm['name'] as String? ?? k, minutes: (mm['minutes'] as num?)?.toInt() ?? 0);
+    });
+    final controls = (m['controls'] as Map?)?.cast<String, dynamic>() ?? const {};
+    return AppUsageReport(
+      date: m['date'] as String? ?? '',
+      apps: apps,
+      totalMin: (m['totalMin'] as num?)?.toInt() ?? 0,
+      installed: ((m['installed'] as List?) ?? const [])
+          .map((e) => (e as Map).cast<String, dynamic>())
+          .map((e) => (pkg: e['pkg'] as String? ?? '', name: e['name'] as String? ?? ''))
+          .where((e) => e.pkg.isNotEmpty)
+          .toList(),
+      usageAccess: controls['usageAccess'] == true,
+      accessibility: controls['accessibility'] == true,
+      ts: (m['ts'] as Timestamp?)?.toDate(),
+    );
+  }
+}
+
+final appUsageProvider = StreamProvider.family<AppUsageReport?, String>((ref, childId) {
+  final fid = _requireFamily(ref);
+  return familyCol(fid, 'appUsage').doc(childId).snapshots().map((d) => d.exists ? AppUsageReport.fromMap(d.data()!) : null);
+});
+
+final appRulesProvider = StreamProvider.family<AppRules, String>((ref, childId) {
+  final s = ref.watch(sessionProvider).value;
+  if (s?.familyId == null) return Stream.value(AppRules.empty);
+  return familyCol(s!.familyId!, 'appRules').doc(childId).snapshots().map((d) => AppRules.fromMap(d.data()));
 });

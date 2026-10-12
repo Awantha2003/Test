@@ -46,7 +46,7 @@ export interface Live {
 }
 
 export interface Alert {
-  type: "sos" | "enter" | "exit" | "late" | "battery" | "offline" | "speed" | "checkin";
+  type: "sos" | "enter" | "exit" | "late" | "battery" | "offline" | "speed" | "checkin" | "apps";
   childId: string;
   childName: string;
   title: string;
@@ -84,8 +84,8 @@ export interface AuditLog {
 /** Shown when Firestore has no plans yet (also used for static pre-rendering). */
 export const FALLBACK_PLANS: (Plan & { id: string })[] = [
   { id: "free", name: "Free", priceLkr: 0, interval: "free", limits: {}, active: true, order: 0, features: ["1 child", "Live map", "SOS push alerts", "2 safe places", "24h history"] },
-  { id: "family_month", name: "Family", priceLkr: 490, interval: "month", limits: {}, active: true, order: 1, highlight: true, features: ["3 children", "10 safe places", "Class arrival schedules", "SMS SOS to guardians", "Voice SOS", "30-day history", "2 co-guardians"] },
-  { id: "premium_month", name: "Premium", priceLkr: 990, interval: "month", limits: {}, active: true, order: 2, features: ["6 children", "30 safe places", "50 schedules", "SMS SOS to guardians", "Voice SOS", "90-day history", "5 co-guardians", "Priority support"] },
+  { id: "family_month", name: "Family", priceLkr: 490, interval: "month", limits: {}, active: true, order: 1, highlight: true, features: ["3 children", "10 safe places", "Class arrival schedules", "SMS SOS to guardians", "Voice SOS", "App controls & screen time", "30-day history", "2 co-guardians"] },
+  { id: "premium_month", name: "Premium", priceLkr: 990, interval: "month", limits: {}, active: true, order: 2, features: ["6 children", "30 safe places", "50 schedules", "SMS SOS to guardians", "Voice SOS", "App controls & screen time", "90-day history", "5 co-guardians", "Priority support"] },
 ];
 
 export const FALLBACK_CONTENT: SiteContent = {

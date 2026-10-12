@@ -93,6 +93,13 @@ flutter build ipa --release --obfuscate --split-debug-info=build/symbols  # same
   - Background location declaration.
   - Data safety form: location, approximate and precise, shared with family only, encrypted, deletable.
   - Families policy review.
+- **App controls (Google Play)**:
+  - Complete the **AccessibilityService API declaration** (parental-control use, prominent disclosure, consent screen and video). The in-app card on the child phone is the disclosure.
+  - Explain `PACKAGE_USAGE_STATS` in the data safety form.
+  - Expect a manual review.
+- **Live track routing**:
+  - The road route uses an OSRM-compatible server (`--dart-define=ROUTING_URL=...`).
+  - The public demo server is for testing only. Self-host OSRM with the Sri Lanka OSM extract, or use a provider.
 - **iOS**:
   - Enable the Push Notifications and Background Modes capabilities in Xcode.
   - Request the **Critical Alerts** entitlement from Apple, so SOS can bypass silent mode.

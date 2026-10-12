@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_blocker_label">Rakawala app controls</string>
+    <string name="app_blocker_description">Lets your family pause apps during school time and bedtime, and set daily time limits. Rakawala only sees which app is open. It never reads what is on the screen, what you type, or your messages. Calls, SMS and SOS are never blocked.</string>
+</resources>

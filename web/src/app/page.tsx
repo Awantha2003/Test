@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  BatteryWarning, Bell, BookOpen, Clock, Lock, MapPin, Mic, ShieldCheck, Smartphone, Users, WifiOff, Siren,
+  AppWindow, BatteryWarning, Bell, BookOpen, Clock, Lock, MapPin, Mic, Navigation, ShieldCheck, Smartphone, Users, WifiOff, Siren,
 } from "lucide-react";
 import { Footer, Navbar } from "@/components/Brand";
 import { PricingCards } from "@/components/Pricing";
@@ -17,6 +17,10 @@ const features = [
   { icon: WifiOff, title: "Works without data", text: "No internet? The child's phone sends an SMS with a map link to you." },
   { icon: BatteryWarning, title: "Battery & offline alerts", text: "Get told when the phone is low or stops sharing, before it's a mystery." },
   { icon: Users, title: "Both parents, grandparents", text: "Invite co-guardians so every adult who cares gets the alerts." },
+  { icon: Navigation, title: "Live track to your child", text: "Open Live track to see the road route from you to your child, updating every few seconds." },
+  { icon: AppWindow, title: "App controls & screen time", text: "See which apps they use, block the ones you don't want, and pause apps during school time and bedtime (Android)." },
+  { icon: Clock, title: "No signal? No gaps", text: "Locations are saved on the phone without signal and synced later, so you still see the whole route." },
+  { icon: BatteryWarning, title: "Last location before it dies", text: "When the battery is about to run out, you get the last precise location by push and SMS." },
 ];
 
 const steps = [

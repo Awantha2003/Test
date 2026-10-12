@@ -57,6 +57,18 @@ Security is therefore designed in from the start, not bolted on.
    - Cloud Logging alerts on pairing failures, IPN signature failures and admin actions.
    - Uptime check on `payhereNotify`.
 
+### App controls & live track: privacy guardrails
+
+- **AccessibilityService** (`AppBlockerService`):
+  - It listens only to `typeWindowStateChanged` with `canRetrieveWindowContent=false`. It can't read screen text, messages or keystrokes.
+  - It is `exported=false` and bound only by the system.
+  - Calls, SMS, launcher, keyboard, Settings and Rakawala are always allowed, so the child can always call for help and can always see and switch off controls.
+  - Switching controls off isn't blocked. It raises a guardian alert instead.
+- **Rules** are written only by guardians on paid plans (Firestore rules check `limits.appControls`). Schedules are schema-validated.
+- **Usage reports** are written only by the child's own device, and read only by its family.
+- **Live mode** can only be switched on server-side (rate-limited, max 30 min), and the child's phone shows a banner while it's on.
+- The Kotlin rule engine is checked against the Dart one (`packages/app_control/tool/kotlin_check.sh`). Malformed rules never block anything.
+
 ## 4. Security test checklist (run before every release)
 
 - [ ] `npm test` in `firebase/functions`: unit tests (signature, geofence, limits, validation).

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -8,6 +9,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../firebase_options.dart';
+import 'app_control_sync.dart';
 import 'location_tracker.dart';
 
 const sharingChannelId = 'sharing';
@@ -78,7 +80,18 @@ Future<void> backgroundEntryPoint(ServiceInstance service) async {
   }
   final tracker = LocationTracker();
   await tracker.start();
+
+  // App controls (Android): keep the blocker's rules fresh and report usage, even when the UI is closed.
+  AppControlSync? apps;
+  final user = FirebaseAuth.instance.currentUser;
+  final claims = (await user?.getIdTokenResult())?.claims;
+  if (user != null && claims?['role'] == 'child' && claims?['familyId'] is String) {
+    apps = AppControlSync(familyId: claims!['familyId'] as String, childId: user.uid);
+    await apps.start();
+  }
+
   service.on('stop').listen((_) async {
+    await apps?.stop();
     await tracker.stop();
     await service.stopSelf();
   });

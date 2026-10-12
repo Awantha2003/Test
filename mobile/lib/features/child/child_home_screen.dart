@@ -15,6 +15,7 @@ import '../../services/sos_service.dart';
 import '../../services/voice_guard.dart';
 import '../../widgets/common.dart';
 import '../../widgets/offline_window_sheet.dart';
+import 'app_controls_card.dart';
 import 'sos_button.dart';
 
 /// The child's screen: deliberately simple. A huge SOS button, "I'm safe", call a parent.
@@ -199,6 +200,8 @@ class _ChildHomeScreenState extends ConsumerState<ChildHomeScreen> with WidgetsB
               ),
             ),
           ],
+          const SizedBox(height: 12),
+          const AppControlsCard(),
           const SectionHeader('Call'),
           ...guardians.where((g) => (g.phone ?? '').isNotEmpty).map((g) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),

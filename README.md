@@ -17,6 +17,10 @@
   - Internet නැත්නම් SMS එකකින් location එක යවනවා.
 - **Website**: landing page, pricing, parent dashboard (live map).
 - **Admin panel**: users, families, **packages (මිල ගණන් / limits)**, payments, website content edit කරන්න, audit log.
+- **Live track**: amma inna thana idan lamaya inna thanata path eka (road route), distance, drive time. Lamaya yana widiha 5 secondsen update wenawa.
+- **App controls (Android)**:
+  - Lamaya use karana apps saha welawa balanna puluwan.
+  - Ona nathi apps block karanna, School time / Bedtime wala apps pause karanna, daily time limit danna puluwan.
 - **Payments**: PayHere (LKR) monthly/yearly subscriptions.
 - **Security**: cyber-security threat model එකක් (STRIDE) අනුව design කරලා තියෙන්නේ. `docs/SECURITY.md` බලන්න.
 
@@ -36,10 +40,11 @@
 
 | Check | Result |
 |---|---|
-| Cloud Functions typecheck + unit tests (geofence, PayHere signatures, plans, codes, schedules) | 18/18 ✅ |
-| Firestore security-rules tests on the emulator (tenancy, tampering, admin MFA, privacy) | 21/21 ✅ |
+| Cloud Functions typecheck + unit tests (geofence, PayHere, plans, codes, schedules, offline trail, app alerts) | 27/27 ✅ |
+| Firestore security-rules tests on the emulator (tenancy, tampering, admin MFA, privacy, app controls, live mode) | 25/25 ✅ |
 | Flutter `analyze` | no issues ✅ |
-| Flutter tests (router guards, SOS hold, voice word, rule-compatible payloads) | 18/18 ✅ |
+| Flutter tests (router guards, SOS hold, voice word, offline queue, live track, app rule engine) | 42/42 ✅ |
+| Android plugin Kotlin: compiles against Android 14 + rule-engine parity with Dart | 18/18 ✅ |
 | Web typecheck + tests + production build | ✅ |
 | `npm audit` (high) on functions and web | 0 ✅ |
 
