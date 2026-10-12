@@ -7,6 +7,7 @@ export { createFamily, savePlace, deletePlace, saveSchedule, deleteSchedule, del
 export { createPairingCode, redeemPairingCode, redeemGuardianInvite, removeChild, removeGuardian } from "./pairing";
 export { onLiveLocation } from "./location";
 export { triggerSos, checkIn, resolveAlert } from "./sos";
+export { uploadOfflineTrail, setOfflineWindow } from "./offline";
 export { checkSchedules, checkHeartbeats, expireSubscriptions } from "./jobs";
 export { createCheckout, payhereNotify } from "./billing";
 export { adminStats, adminSetUserDisabled, adminSetFamilyPlan, adminSeed, auditPlans, auditSiteContent } from "./admin";

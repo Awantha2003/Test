@@ -1,14 +1,16 @@
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import * as logger from "firebase-functions/logger";
 import { familyRef, FieldValue, Timestamp } from "./lib/firebase";
-import { evaluateGeofences, Place, toKmh } from "./lib/geo";
+import { evaluateGeofences, mapsLink, Place, toKmh } from "./lib/geo";
 import { effectiveLimits } from "./lib/plans";
-import { raiseAlert } from "./lib/notify";
+import { raiseAlert, smsGuardians, NOTIFYLK_API_KEY } from "./lib/notify";
 import { DEFAULT_CHILD_SETTINGS } from "./pairing";
 
 const HISTORY_MIN_INTERVAL_MS = 60 * 1000;
 const SPEED_ALERT_COOLDOWN_MS = 15 * 60 * 1000;
 const BATTERY_ALERT_COOLDOWN_MS = 6 * 3600 * 1000;
+/** At this level the phone is about to die: send the last location before it goes dark. */
+export const CRITICAL_BATTERY_PCT = 5;
 
 interface Live {
   lat: number;
@@ -25,10 +27,11 @@ interface Live {
  * Runs on every location write from a child device:
  *  1. appends to history (throttled, TTL by plan),
  *  2. evaluates safe-place enter/exit,
- *  3. raises speed and low-battery alerts (with cooldowns).
+ *  3. raises speed and low-battery alerts (with cooldowns),
+ *  4. at critical battery, sends the last location by push and SMS before the phone dies.
  */
 export const onLiveLocation = onDocumentWritten(
-  { document: "families/{fid}/live/{cid}", retry: false },
+  { document: "families/{fid}/live/{cid}", retry: false, secrets: [NOTIFYLK_API_KEY] },
   async (event) => {
     const after = event.data?.after.data() as Live | undefined;
     if (!after) return;
@@ -120,6 +123,23 @@ export const onLiveLocation = onDocumentWritten(
         body: `${battery}% left. Location sharing will stop if it dies.`,
       });
       updates.lastBatteryAlertAt = Timestamp.fromMillis(now);
+    }
+
+    // 5. Critical battery: the phone will go dark soon, so hand guardians its last location.
+    const lastCritical = (state.lastCriticalBatteryAt as Timestamp | undefined)?.toMillis() ?? 0;
+    if (
+      battery != null && !after.charging && battery <= CRITICAL_BATTERY_PCT &&
+      now - lastCritical > BATTERY_ALERT_COOLDOWN_MS
+    ) {
+      await raiseAlert(fid, {
+        type: "battery", childId: cid, childName, ...point,
+        title: `${childName}'s phone is about to switch off`,
+        body: `${battery}% battery. Last location saved (±${Math.round(after.accuracy)} m), open the map to see it.`,
+      });
+      if (limits.smsSos) {
+        await smsGuardians(fid, `RAKAWALA: ${childName}'s phone battery is ${battery}% and may switch off. Last location: ${mapsLink(point)}`);
+      }
+      updates.lastCriticalBatteryAt = Timestamp.fromMillis(now);
     }
 
     // Reset the offline flag so the heartbeat job can alert again later.

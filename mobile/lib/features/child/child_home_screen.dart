@@ -9,10 +9,12 @@ import '../../core/theme.dart';
 import '../../data/models.dart';
 import '../../data/providers.dart';
 import '../../services/background_service.dart';
+import '../../services/offline_trail.dart';
 import '../../services/permissions.dart';
 import '../../services/sos_service.dart';
 import '../../services/voice_guard.dart';
 import '../../widgets/common.dart';
+import '../../widgets/offline_window_sheet.dart';
 import 'sos_button.dart';
 
 /// The child's screen: deliberately simple. A huge SOS button, "I'm safe", call a parent.
@@ -25,6 +27,7 @@ class ChildHomeScreen extends ConsumerStatefulWidget {
 class _ChildHomeScreenState extends ConsumerState<ChildHomeScreen> with WidgetsBindingObserver {
   SharingReadiness? _readiness;
   bool _sharing = false;
+  int _pendingTrail = 0;
   bool _sending = false;
   VoiceGuard? _voice;
   String _voiceStatus = '';
@@ -54,12 +57,24 @@ class _ChildHomeScreenState extends ConsumerState<ChildHomeScreen> with WidgetsB
       await BackgroundSharing.start();
     }
     final running = await BackgroundSharing.isRunning();
+    final pending = await OfflineTrailBuffer().count();
     if (mounted) {
       setState(() {
         _readiness = r;
         _sharing = running;
+        _pendingTrail = pending;
       });
     }
+  }
+
+  Future<void> _noSignalAhead() async {
+    final w = await showOfflineWindowSheet(context, title: 'No signal ahead?');
+    if (w == null || !mounted) return;
+    await runGuarded(
+      context,
+      () => ref.read(apiProvider).setOfflineWindow(minutes: w.minutes, reason: w.reason),
+      success: 'Your family knows you may be offline for ${durationLabel(w.minutes)}.',
+    );
   }
 
   Future<void> _sos(String source) async {
@@ -145,6 +160,22 @@ class _ChildHomeScreenState extends ConsumerState<ChildHomeScreen> with WidgetsB
             label: const Text("I'm safe"),
             style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(58), backgroundColor: AppColors.safe.withValues(alpha: 0.15), foregroundColor: AppColors.safe),
           ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _noSignalAhead,
+            icon: const Icon(Icons.signal_cellular_off_rounded),
+            label: const Text('No signal ahead? (train, trip)'),
+          ),
+          if (_pendingTrail > 0) ...[
+            const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.cloud_upload_rounded),
+                title: Text('$_pendingTrail location${_pendingTrail == 1 ? '' : 's'} saved offline'),
+                subtitle: const Text('They upload automatically when you have signal again.'),
+              ),
+            ),
+          ],
           if (voiceAllowed && child != null) ...[
             const SizedBox(height: 12),
             Card(

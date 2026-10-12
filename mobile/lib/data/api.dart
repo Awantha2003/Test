@@ -76,6 +76,13 @@ class Api {
   Future<void> resolveAlert(String alertId, {String status = 'resolved', String? note}) =>
       _call('resolveAlert', {'alertId': alertId, 'status': status, 'note': ?note});
 
+  // No signal
+  Future<int> uploadOfflineTrail(List<Map<String, Object?>> points) async => ((await _call('uploadOfflineTrail', {'points': points}))['stored'] as num?)?.toInt() ?? 0;
+
+  /// [minutes] = 0 ends the window early. Guardians pass [childId]; a child phone omits it.
+  Future<void> setOfflineWindow({String? childId, required int minutes, String? reason}) =>
+      _call('setOfflineWindow', {'childId': ?childId, 'minutes': minutes, 'reason': ?reason});
+
   // Billing
   Future<Map<String, dynamic>> createCheckout(String planId) => _call('createCheckout', {'planId': planId, 'channel': 'app'});
 }

@@ -26,6 +26,10 @@
 9. Child-device pairing with a single-use 8-character code (expires in 10 min).
 10. Subscriptions via PayHere (LKR). Plan limits are enforced on the server.
 11. Admin panel and CMS for the website's text, FAQ and pricing.
+12. **No-signal handling**:
+    - **Offline trail.** Locations are saved on the phone without signal and uploaded as one batch on reconnect (`uploadOfflineTrail`). Guardians see the full route, and arrivals made offline still count for schedules.
+    - **"No signal ahead" window.** The child or a guardian pauses offline alerts for a train ride or trip (`setOfflineWindow`), and guardians are told why.
+    - **Critical battery (≤5%).** The phone grabs one last precise fix, and guardians get it by push (and SMS on paid plans) before the phone dies.
 
 **Later (roadmap)**: school-van driver mode, crash/fall detection, wearables, Sinhala/Tamil TTS for alerts, WhatsApp alerts, and school (B2B) accounts.
 

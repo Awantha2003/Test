@@ -59,6 +59,9 @@ export const checkHeartbeats = onSchedule({ schedule: "every 15 minutes", timeZo
       fref.collection("geostate").doc(cid).get(),
     ]);
     if (!child.exists || state.get("offlineAlerted") === true) continue;
+    // A planned no-signal window (train, rural trip) silences the alert until it ends.
+    const quietUntil = (state.get("quietUntil") as Timestamp | null | undefined)?.toMillis() ?? 0;
+    if (quietUntil > now) continue;
     const settings = { ...DEFAULT_CHILD_SETTINGS, ...(child.get("settings") ?? {}) };
     if (!settings.guardMode) continue;
     const lastTs = (live.get("ts") as Timestamp).toMillis();

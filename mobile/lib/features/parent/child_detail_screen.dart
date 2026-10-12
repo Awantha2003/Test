@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import '../../data/models.dart';
 import '../../data/providers.dart';
 import '../../widgets/common.dart';
+import '../../widgets/offline_window_sheet.dart';
 import 'map_widgets.dart';
 
 class ChildDetailScreen extends ConsumerStatefulWidget {
@@ -103,6 +104,24 @@ class _ChildDetailScreenState extends ConsumerState<ChildDetailScreen> {
               },
             ),
           ]),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.signal_cellular_off_rounded),
+            title: const Text('No signal expected'),
+            subtitle: Text('Pause offline alerts during a trip or train ride. The route syncs when ${child.name}\'s phone reconnects.'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () async {
+              final w = await showOfflineWindowSheet(context, title: 'Pause offline alerts for ${child.name}', showEnd: true);
+              if (w == null || !context.mounted) return;
+              await runGuarded(
+                context,
+                () => ref.read(apiProvider).setOfflineWindow(childId: child.id, minutes: w.minutes, reason: w.reason),
+                success: w.minutes == 0 ? 'Offline alerts are back on.' : 'Offline alerts paused for ${durationLabel(w.minutes)}.',
+              );
+            },
+          ),
         ),
         const SectionHeader('Voice SOS'),
         Card(
