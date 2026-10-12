@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - name: Functions typecheck & unit tests
+        working-directory: firebase/functions
+        run: npm ci && npm run typecheck && npm test
+      - name: Firestore security rules tests (emulator)
+        working-directory: firebase
+        run: npm ci && npm run test:rules
+      - name: Dependency audit
+        working-directory: firebase/functions
+        run: npm audit --omit=dev --audit-level=high
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - working-directory: web
+        run: npm ci && npx tsc --noEmit && npm test && npm run build
+        env: { NEXT_TELEMETRY_DISABLED: 1 }
+
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable }
+      - working-directory: mobile
+        run: flutter pub get && flutter analyze && flutter test

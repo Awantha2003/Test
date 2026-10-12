@@ -1,0 +1,6 @@
+{
+  "projects": {
+    "default": "rakawala-dev",
+    "prod": "rakawala-prod"
+  }
+}
