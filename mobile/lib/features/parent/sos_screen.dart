@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -95,6 +96,12 @@ class _SosScreenState extends ConsumerState<SosScreen> {
                   ),
                 ),
               ]),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/p/live/${alert.childId}'),
+                icon: const Icon(Icons.radar_rounded),
+                label: const Text('Live track (route from you)'),
+              ),
               if (childPhone != null) ...[
                 const SizedBox(height: 10),
                 OutlinedButton.icon(onPressed: () => SosService.call(childPhone), icon: const Icon(Icons.call_rounded), label: Text('Call ${alert.childName}')),

@@ -76,6 +76,12 @@ class _ChildDetailScreenState extends ConsumerState<ChildDetailScreen> {
           loc == null ? 'No location yet' : 'Updated ${timeAgo(loc.ts)} · accuracy ±${loc.accuracy.round()} m · trail: last 24 h (${trail.length} points)',
           style: t.textTheme.bodySmall,
         ),
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: loc == null ? null : () => context.push('/p/live/${child.id}'),
+          icon: const Icon(Icons.radar_rounded),
+          label: const Text('Live track (updates every 5 s)'),
+        ),
         const SectionHeader('Safety settings'),
         Card(
           child: Column(children: [

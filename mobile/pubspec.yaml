@@ -59,6 +59,7 @@ dependencies:
   payhere_mobilesdk_flutter: ^3.2.3
   vibration: ^3.2.1
   crypto: ^3.0.7
+  http: ^1.6.0
 
 dev_dependencies:
   flutter_test:

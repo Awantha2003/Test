@@ -8,6 +8,8 @@ export interface PlanLimits {
   historyDays: number;
   smsSos: boolean;
   voiceSos: boolean;
+  /** Android app usage reports, blocking and time schedules. */
+  appControls: boolean;
 }
 
 export interface Plan {
@@ -30,6 +32,7 @@ export const FREE_LIMITS: PlanLimits = {
   historyDays: 1,
   smsSos: false,
   voiceSos: false,
+  appControls: false,
 };
 
 export const DEFAULT_PLANS: Plan[] = [
@@ -48,8 +51,8 @@ export const DEFAULT_PLANS: Plan[] = [
     name: "Family",
     priceLkr: 490,
     interval: "month",
-    limits: { maxChildren: 3, maxPlaces: 10, maxSchedules: 10, maxGuardians: 2, historyDays: 30, smsSos: true, voiceSos: true },
-    features: ["3 children", "10 safe places", "Class arrival schedules", "SMS SOS to guardians", "Voice SOS", "30-day history", "2 co-guardians"],
+    limits: { maxChildren: 3, maxPlaces: 10, maxSchedules: 10, maxGuardians: 2, historyDays: 30, smsSos: true, voiceSos: true, appControls: true },
+    features: ["3 children", "10 safe places", "Class arrival schedules", "SMS SOS to guardians", "Voice SOS", "App controls & screen time", "30-day history", "2 co-guardians"],
     active: true,
     order: 1,
     highlight: true,
@@ -59,8 +62,8 @@ export const DEFAULT_PLANS: Plan[] = [
     name: "Premium",
     priceLkr: 990,
     interval: "month",
-    limits: { maxChildren: 6, maxPlaces: 30, maxSchedules: 50, maxGuardians: 5, historyDays: 90, smsSos: true, voiceSos: true },
-    features: ["6 children", "30 safe places", "50 schedules", "SMS SOS to guardians", "Voice SOS", "90-day history", "5 co-guardians", "Priority support"],
+    limits: { maxChildren: 6, maxPlaces: 30, maxSchedules: 50, maxGuardians: 5, historyDays: 90, smsSos: true, voiceSos: true, appControls: true },
+    features: ["6 children", "30 safe places", "50 schedules", "SMS SOS to guardians", "Voice SOS", "App controls & screen time", "90-day history", "5 co-guardians", "Priority support"],
     active: true,
     order: 2,
   },
@@ -69,7 +72,7 @@ export const DEFAULT_PLANS: Plan[] = [
     name: "Family (yearly)",
     priceLkr: 4900,
     interval: "year",
-    limits: { maxChildren: 3, maxPlaces: 10, maxSchedules: 10, maxGuardians: 2, historyDays: 30, smsSos: true, voiceSos: true },
+    limits: { maxChildren: 3, maxPlaces: 10, maxSchedules: 10, maxGuardians: 2, historyDays: 30, smsSos: true, voiceSos: true, appControls: true },
     features: ["Everything in Family", "2 months free"],
     active: true,
     order: 3,

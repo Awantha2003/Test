@@ -43,7 +43,13 @@ class LocationTracker {
   static const heartbeat = Duration(minutes: 5);
   static const minWriteGap = Duration(seconds: 20);
 
+  /// While a guardian has Live track open: much faster updates for a short window.
+  static const liveWriteGap = Duration(seconds: 5);
+
   StreamSubscription<Position>? _sub;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _childSub;
+  Timer? _liveEnd;
+  bool _live = false;
   Timer? _heartbeat;
   DateTime _lastWrite = DateTime.fromMillisecondsSinceEpoch(0);
   Position? _last;
@@ -56,36 +62,70 @@ class LocationTracker {
     if (running) return;
     final user = _auth.currentUser;
     if (user == null) return;
+    _listenPosition();
+    _heartbeat = Timer.periodic(heartbeat, (_) => _beat());
+    unawaited(_beat());
+    unawaited(_watchLiveMode(user));
+  }
 
-    final settings = switch (defaultTargetPlatform) {
+  void _listenPosition() {
+    unawaited(_sub?.cancel());
+    _sub = Geolocator.getPositionStream(locationSettings: positionSettings(live: _live)).listen(
+      (p) => _write(p, source: 'gps'),
+      onError: (Object e) => debugPrint('location stream error: $e'),
+    );
+  }
+
+  /// Normal: 25 m / ~30 s. Live (a guardian is watching): 5 m / ~5 s.
+  @visibleForTesting
+  static LocationSettings positionSettings({required bool live}) {
+    final distance = live ? 5 : 25;
+    return switch (defaultTargetPlatform) {
       TargetPlatform.android => AndroidSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 25,
-          intervalDuration: const Duration(seconds: 30),
+          accuracy: live ? LocationAccuracy.best : LocationAccuracy.high,
+          distanceFilter: distance,
+          intervalDuration: Duration(seconds: live ? 5 : 30),
         ),
       TargetPlatform.iOS => AppleSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 25,
+          accuracy: live ? LocationAccuracy.best : LocationAccuracy.high,
+          distanceFilter: distance,
           activityType: ActivityType.otherNavigation,
           pauseLocationUpdatesAutomatically: false,
           allowBackgroundLocationUpdates: true,
           // The blue status-bar pill tells the child sharing is on.
           showBackgroundLocationIndicator: true,
         ),
-      _ => const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 25),
+      _ => LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: distance),
     };
+  }
 
-    _sub = Geolocator.getPositionStream(locationSettings: settings).listen(
-      (p) => _write(p, source: 'gps'),
-      onError: (Object e) => debugPrint('location stream error: $e'),
-    );
-    _heartbeat = Timer.periodic(heartbeat, (_) => _beat());
-    unawaited(_beat());
+  /// Follows `liveUntil` on this child's own record (set by a guardian via setLiveTracking).
+  Future<void> _watchLiveMode(User user) async {
+    final fid = (await user.getIdTokenResult()).claims?['familyId'] as String?;
+    if (fid == null) return;
+    await _childSub?.cancel();
+    _childSub = _db.collection('families').doc(fid).collection('children').doc(user.uid).snapshots().listen((d) {
+      final until = (d.data()?['liveUntil'] as Timestamp?)?.toDate();
+      _setLive(until != null && until.isAfter(DateTime.now()) ? until : null);
+    }, onError: (Object e) => debugPrint('live-mode listener error: $e'));
+  }
+
+  void _setLive(DateTime? until) {
+    _liveEnd?.cancel();
+    final live = until != null;
+    if (live) _liveEnd = Timer(until.difference(DateTime.now()), () => _setLive(null));
+    if (live == _live) return;
+    _live = live;
+    if (running) _listenPosition();
+    if (live) unawaited(_beat()); // send a fresh fix immediately
   }
 
   Future<void> stop() async {
     await _sub?.cancel();
     _sub = null;
+    await _childSub?.cancel();
+    _childSub = null;
+    _liveEnd?.cancel();
     _heartbeat?.cancel();
     _heartbeat = null;
   }
@@ -105,7 +145,7 @@ class LocationTracker {
   Future<void> _write(Position p, {required String source, bool force = false}) async {
     _last = p;
     final now = DateTime.now();
-    if (!force && now.difference(_lastWrite) < minWriteGap) return;
+    if (!force && now.difference(_lastWrite) < (_live ? liveWriteGap : minWriteGap)) return;
     final user = _auth.currentUser;
     if (user == null) return;
     final token = await user.getIdTokenResult();

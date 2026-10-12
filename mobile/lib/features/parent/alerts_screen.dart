@@ -16,6 +16,7 @@ import '../../widgets/common.dart';
       AlertType.offline => (Icons.signal_wifi_off_rounded, AppColors.warn),
       AlertType.speed => (Icons.speed_rounded, AppColors.warn),
       AlertType.checkin => (Icons.verified_user_rounded, AppColors.safe),
+      AlertType.apps => (Icons.apps_rounded, AppColors.brand),
     };
 
 class AlertsScreen extends ConsumerStatefulWidget {

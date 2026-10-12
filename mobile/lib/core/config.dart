@@ -12,6 +12,11 @@ class AppConfig {
   );
   static const mapAttribution = String.fromEnvironment('MAP_ATTRIBUTION', defaultValue: '© OpenStreetMap contributors');
 
+  /// OSRM-compatible routing server for the road route on Live track. The public demo
+  /// server is fine for testing only; production should self-host OSRM or use a provider.
+  /// Empty = show a straight line instead of a road route.
+  static const routingUrl = String.fromEnvironment('ROUTING_URL', defaultValue: 'https://router.project-osrm.org');
+
   static const useEmulators = bool.fromEnvironment('USE_EMULATORS');
   static const emulatorHost = String.fromEnvironment('EMULATOR_HOST', defaultValue: '10.0.2.2');
 

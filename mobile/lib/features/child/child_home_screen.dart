@@ -148,6 +148,15 @@ class _ChildHomeScreenState extends ConsumerState<ChildHomeScreen> with WidgetsB
       ),
       body: SafeArea(
         child: ListView(padding: const EdgeInsets.fromLTRB(20, 4, 20, 24), children: [
+          if (child?.isLive ?? false)
+            Card(
+              color: AppColors.brand.withValues(alpha: 0.1),
+              child: const ListTile(
+                leading: Icon(Icons.radar_rounded, color: AppColors.brand),
+                title: Text('Your family is viewing your live location'),
+                subtitle: Text('Updates are faster for a few minutes so they can find you.'),
+              ),
+            ),
           if (_readiness != null && _readiness != SharingReadiness.ready) _PermissionCard(readiness: _readiness!, onDone: _refresh),
           const SizedBox(height: 12),
           Center(child: SosButton(busy: _sending, onTriggered: () => _sos('button'))),

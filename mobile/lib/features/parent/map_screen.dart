@@ -146,7 +146,14 @@ class _ChildCard extends StatelessWidget {
                   ]),
                 ]),
               ),
-              IconButton(icon: const Icon(Icons.chevron_right_rounded), onPressed: () => context.push('/p/child/${child.id}')),
+              Column(mainAxisSize: MainAxisSize.min, children: [
+                IconButton.filledTonal(
+                  tooltip: 'Live track',
+                  icon: const Icon(Icons.radar_rounded),
+                  onPressed: loc == null ? null : () => context.push('/p/live/${child.id}'),
+                ),
+                IconButton(tooltip: 'Details', icon: const Icon(Icons.chevron_right_rounded), onPressed: () => context.push('/p/child/${child.id}')),
+              ]),
             ]),
           ),
         ),

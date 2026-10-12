@@ -88,7 +88,7 @@ class ChildSettings {
 }
 
 class Child {
-  Child({required this.id, required this.name, required this.color, required this.paired, this.deviceName, this.platform, required this.settings});
+  Child({required this.id, required this.name, required this.color, required this.paired, this.deviceName, this.platform, required this.settings, this.liveUntil});
   final String id;
   final String name;
   final Color color;
@@ -96,6 +96,10 @@ class Child {
   final String? deviceName;
   final String? platform;
   final ChildSettings settings;
+
+  /// While set and in the future, the child's phone sends fast (~5 s) updates for a guardian's live view.
+  final DateTime? liveUntil;
+  bool get isLive => liveUntil != null && liveUntil!.isAfter(DateTime.now());
 
   String get initials => name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
 
@@ -109,17 +113,19 @@ class Child {
       deviceName: m['deviceName'] as String?,
       platform: m['platform'] as String?,
       settings: ChildSettings.fromMap((m['settings'] as Map?)?.cast<String, dynamic>()),
+      liveUntil: _ts(m['liveUntil']),
     );
   }
 }
 
 class LiveLocation {
-  LiveLocation({required this.childId, required this.lat, required this.lng, required this.accuracy, this.speed, this.battery, this.charging = false, this.ts});
+  LiveLocation({required this.childId, required this.lat, required this.lng, required this.accuracy, this.speed, this.heading, this.battery, this.charging = false, this.ts});
   final String childId;
   final double lat;
   final double lng;
   final double accuracy;
   final double? speed;
+  final double? heading;
   final int? battery;
   final bool charging;
   final DateTime? ts;
@@ -135,6 +141,7 @@ class LiveLocation {
       lng: _d(m['lng']),
       accuracy: _d(m['accuracy'], 999),
       speed: (m['speed'] as num?)?.toDouble(),
+      heading: (m['heading'] as num?)?.toDouble(),
       battery: (m['battery'] as num?)?.toInt(),
       charging: m['charging'] as bool? ?? false,
       ts: _ts(m['ts']),
@@ -215,7 +222,7 @@ class Schedule {
   }
 }
 
-enum AlertType { sos, enter, exit, late, battery, offline, speed, checkin }
+enum AlertType { sos, enter, exit, late, battery, offline, speed, checkin, apps }
 
 class AlertItem {
   AlertItem({required this.id, required this.type, required this.childId, required this.childName, required this.title, required this.body, this.lat, this.lng, this.createdAt, required this.status});

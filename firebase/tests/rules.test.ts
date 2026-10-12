@@ -40,6 +40,7 @@ beforeEach(async () => {
       await setDoc(doc(db, `families/${fid}/alerts/a1`), { type: "sos", status: "open" });
     }
     await setDoc(doc(db, "users/famA-mom"), { role: "parent", familyId: FAM_A, displayName: "Mom" });
+    await setDoc(doc(db, `families/${FAM_B}`), { name: FAM_B, ownerUid: `${FAM_B}-mom`, planId: "family_month", limits: { maxChildren: 3, appControls: true } });
     await setDoc(doc(db, "plans/free"), { name: "Free", priceLkr: 0 });
     await setDoc(doc(db, "pairingCodes/abc"), { familyId: FAM_A, used: false });
     await setDoc(doc(db, "payments/ORDER1"), { familyId: FAM_A, status: "paid" });
@@ -210,4 +211,40 @@ test("device token registration is scoped to the owner", async () => {
   const mine = doc(parent(), "users/famA-mom/devices/d1");
   await assertSucceeds(setDoc(mine, { token: "fcm-token", platform: "android", updatedAt: serverTimestamp() }));
   await assertFails(setDoc(doc(parent(FAM_B), "users/famA-mom/devices/d2"), { token: "x", platform: "android", updatedAt: serverTimestamp() }));
+});
+
+// ---------- app controls ----------
+
+const rules = (uid: string) => ({
+  apps: { "com.zhiliaoapp.musically": { mode: "block" } },
+  schedules: [{ id: "school", label: "School time", days: ["mon", "tue"], start: "07:30", end: "13:30", active: true }],
+  dailyLimitMin: 120,
+  updatedAt: serverTimestamp(),
+  updatedBy: uid,
+});
+
+test("app rules: paid-plan guardian can set them, child can read them", async () => {
+  await assertSucceeds(setDoc(doc(parent(FAM_B), `families/${FAM_B}/appRules/${FAM_B}-kid`), rules(`${FAM_B}-mom`)));
+  await assertSucceeds(getDoc(doc(child(FAM_B), `families/${FAM_B}/appRules/${FAM_B}-kid`)));
+});
+
+test("app rules: blocked on the Free plan, for children, and with bad schedules", async () => {
+  await assertFails(setDoc(doc(parent(FAM_A), `families/${FAM_A}/appRules/${FAM_A}-kid`), rules(`${FAM_A}-mom`)));
+  await assertFails(setDoc(doc(child(FAM_B), `families/${FAM_B}/appRules/${FAM_B}-kid`), rules(`${FAM_B}-kid`)));
+  const bad = { ...rules(`${FAM_B}-mom`), schedules: [{ id: "x", label: "X", days: [], start: "25:00", end: "07:00", active: true }] };
+  await assertFails(setDoc(doc(parent(FAM_B), `families/${FAM_B}/appRules/${FAM_B}-kid`), bad));
+  await assertFails(setDoc(doc(parent(FAM_B), `families/${FAM_B}/appRules/nobody`), rules(`${FAM_B}-mom`)));
+});
+
+test("app usage: only the child phone reports it, only parents read it", async () => {
+  const usage = { date: "2026-10-12", apps: { "com.whatsapp": { name: "WhatsApp", minutes: 42 } }, totalMin: 42, installed: [], controls: { usageAccess: true, accessibility: true, platform: "android" }, ts: serverTimestamp() };
+  await assertSucceeds(setDoc(doc(child(), `families/${FAM_A}/appUsage/${FAM_A}-kid`), usage));
+  await assertFails(setDoc(doc(child(), `families/${FAM_A}/appUsage/other`), usage));
+  await assertFails(setDoc(doc(parent(), `families/${FAM_A}/appUsage/${FAM_A}-kid`), usage));
+  await assertSucceeds(getDoc(doc(parent(), `families/${FAM_A}/appUsage/${FAM_A}-kid`)));
+  await assertFails(getDoc(doc(parent(FAM_B), `families/${FAM_A}/appUsage/${FAM_A}-kid`)));
+});
+
+test("parents can't switch on live mode directly (server-only, rate-limited)", async () => {
+  await assertFails(updateDoc(doc(parent(), `families/${FAM_A}/children/${FAM_A}-kid`), { liveUntil: new Date(2030, 1, 1) }));
 });

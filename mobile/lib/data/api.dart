@@ -76,6 +76,13 @@ class Api {
   Future<void> resolveAlert(String alertId, {String status = 'resolved', String? note}) =>
       _call('resolveAlert', {'alertId': alertId, 'status': status, 'note': ?note});
 
+  // Live tracking: minutes 1..30 starts fast updates on the child phone, 0 stops them.
+  Future<DateTime?> setLiveTracking(String childId, int minutes) async {
+    final r = await _call('setLiveTracking', {'childId': childId, 'minutes': minutes});
+    final ms = r['liveUntil'] as num?;
+    return ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms.toInt());
+  }
+
   // No signal
   Future<int> uploadOfflineTrail(List<Map<String, Object?>> points) async => ((await _call('uploadOfflineTrail', {'points': points}))['stored'] as num?)?.toInt() ?? 0;
 

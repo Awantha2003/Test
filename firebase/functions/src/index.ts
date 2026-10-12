@@ -8,6 +8,8 @@ export { createPairingCode, redeemPairingCode, redeemGuardianInvite, removeChild
 export { onLiveLocation } from "./location";
 export { triggerSos, checkIn, resolveAlert } from "./sos";
 export { uploadOfflineTrail, setOfflineWindow } from "./offline";
+export { setLiveTracking } from "./live";
+export { onAppUsage } from "./apps";
 export { checkSchedules, checkHeartbeats, expireSubscriptions } from "./jobs";
 export { createCheckout, payhereNotify } from "./billing";
 export { adminStats, adminSetUserDisabled, adminSetFamilyPlan, adminSeed, auditPlans, auditSiteContent } from "./admin";

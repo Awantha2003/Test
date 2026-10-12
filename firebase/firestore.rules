@@ -139,6 +139,53 @@ service cloud.firestore {
       match /geostate/{cid} {
         allow read: if isParentOf(fid);
       }
+
+      // ---------- app controls (Android) ----------
+      function planAllowsAppControls() {
+        return get(/databases/$(database)/documents/families/$(fid)).data.get('limits', {}).get('appControls', false) == true;
+      }
+      function validWindow(w) {
+        return w is map
+          && w.keys().hasOnly(['id', 'label', 'days', 'start', 'end', 'active'])
+          && w.id is string && w.id.size() <= 40
+          && shortString(w.label, 40)
+          && w.days is list && w.days.size() <= 7
+          && w.start is string && w.start.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+          && w.end is string && w.end.matches('^([01][0-9]|2[0-3]):[0-5][0-9]$')
+          && w.active is bool;
+      }
+
+      // Guardians set the rules; the child phone reads and enforces them.
+      match /appRules/{cid} {
+        allow read: if isParentOf(fid) || (isChildOf(fid) && request.auth.uid == cid);
+        allow create, update: if isParentOf(fid) && planAllowsAppControls()
+          && exists(/databases/$(database)/documents/families/$(fid)/children/$(cid))
+          && request.resource.data.keys().hasOnly(['apps', 'schedules', 'dailyLimitMin', 'updatedAt', 'updatedBy'])
+          && request.resource.data.apps is map && request.resource.data.apps.size() <= 500
+          && request.resource.data.schedules is list && request.resource.data.schedules.size() <= 4
+          && (request.resource.data.schedules.size() < 1 || validWindow(request.resource.data.schedules[0]))
+          && (request.resource.data.schedules.size() < 2 || validWindow(request.resource.data.schedules[1]))
+          && (request.resource.data.schedules.size() < 3 || validWindow(request.resource.data.schedules[2]))
+          && (request.resource.data.schedules.size() < 4 || validWindow(request.resource.data.schedules[3]))
+          && inRange(request.resource.data.get('dailyLimitMin', 0), 0, 1440)
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.updatedBy == request.auth.uid;
+        allow delete: if isParentOf(fid);
+      }
+
+      // The child phone reports today's usage, installed apps and whether controls are on.
+      match /appUsage/{cid} {
+        allow read: if isParentOf(fid);
+        allow create, update: if isChildOf(fid) && request.auth.uid == cid
+          && request.resource.data.keys().hasOnly(['date', 'apps', 'totalMin', 'installed', 'controls', 'ts'])
+          && request.resource.data.date is string && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && request.resource.data.apps is map && request.resource.data.apps.size() <= 500
+          && inRange(request.resource.data.totalMin, 0, 1440)
+          && request.resource.data.installed is list && request.resource.data.installed.size() <= 600
+          && request.resource.data.controls is map
+          && request.resource.data.controls.keys().hasOnly(['usageAccess', 'accessibility', 'platform'])
+          && request.resource.data.ts == request.time;
+      }
     }
 
     // ---------- payments ----------
