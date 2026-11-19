@@ -21,9 +21,12 @@ export function classify(title = '', extra = '') {
 
 // A job is kept if it is software/IT related. Internships are kept when
 // the title or the source context (e.g. an IT category feed) is tech-related.
-export function isRelevant(cats, { techSource = false } = {}) {
+const NON_TECH =
+  /\b(sales|marketing|video|content|social media|graphic|hr|human resources?|talent|recruit\w*|account(ant|ing|s)?|finance|executive assistant|business development|customer (care|service|support)|call cent\w*|admin(istrative)? assistant|receptionist|front desk|driver|rider|legal|procurement|logistics)\b/i;
+
+export function isRelevant(cats, { techSource = false, title = '' } = {}) {
   if (cats.includes('software') || cats.includes('it')) return true;
-  if (techSource) return true;
+  if (techSource && !NON_TECH.test(title)) return true;
   return false;
 }
 

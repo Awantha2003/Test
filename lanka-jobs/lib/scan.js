@@ -55,7 +55,7 @@ export async function runScan({ notify = true } = {}) {
   }
   for (const j of uniq.values()) {
     const cats = classify(j.title, j.description || '');
-    if (!isRelevant(cats, { techSource: j.techSource })) {
+    if (!isRelevant(cats, { techSource: j.techSource, title: j.title })) {
       irrelevant.push(`${j.source}|${String(j.external_id).slice(0, 500)}`);
       continue;
     }

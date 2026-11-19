@@ -116,15 +116,18 @@ export async function itpro() {
       if (!m) return;
       const title = clean($(el).find('.jc-title').text());
       const company = clean($(el).find('.jc-company').text());
-      const la = clean($(el).find('.la').text()).replace(/•/g, '•');
+      const la = clean($(el).find('.la').text());
+      const dm = la.match(/(\d{1,2} [A-Z][a-z]{2} \d{4})/);
+      const location = la.split('\u2022')[0].replace(/\d{1,2} [A-Z][a-z]{2}( \d{4})?/g, '').replace(/\d+\s*(minute|hour|day|week|month)s? ago|\d+[mhdw] ago|just now|today|yesterday/gi, '').trim();
       out.push({
         source: 'itpro.lk',
         external_id: m[1],
         title,
         company,
-        location: la.split('•')[0]?.trim() || 'Sri Lanka',
+        location: location || 'Sri Lanka',
         url: href.startsWith('http') ? href : `https://itpro.lk${href}`,
-        description: la || null,
+        description: null,
+        posted_at: dm ? toDate(dm[1]) : null,
         techSource: true,
       });
     });
