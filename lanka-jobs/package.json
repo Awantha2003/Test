@@ -1,0 +1,17 @@
+{
+  "name": "lanka-jobs",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "cheerio": "1.2.0",
+    "next": "15.5.29",
+    "postgres": "3.4.5",
+    "react": "19.1.1",
+    "react-dom": "19.1.1"
+  }
+}
