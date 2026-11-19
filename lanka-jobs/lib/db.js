@@ -7,10 +7,10 @@ export function db() {
     g.__ljsql = postgres(process.env.DATABASE_URL, {
       ssl: 'require',
       prepare: false, // required for Supabase transaction pooler
-      max: 3,
+      max: 5,
       idle_timeout: 20,
       connect_timeout: 15,
-      connection: { search_path: 'lankajobs' },
+      connection: { search_path: 'lankajobs', statement_timeout: 20000 },
     });
   }
   return g.__ljsql;

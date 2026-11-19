@@ -4,7 +4,7 @@ const RX = {
   intern: /\b(intern|interns|internship|trainee|undergraduate|placement|apprentice)\b/i,
   associate: /\b(associate|junior|jr\.?|graduate|entry[- ]level|fresher|fresh grad)\b/i,
   software:
-    /\b(software|developer|programmer|full[- ]?stack|front[- ]?end|back[- ]?end|mobile app|android|ios|flutter|react|angular|node|java|python|\.net|php|golang|devops|sre|qa|quality assurance|test automation|sdet|tester|ui\/ux|ux|data engineer|data scien|machine learning|ml engineer|ai engineer|cloud engineer|web developer|solutions? architect|tech lead|technical lead|engineering manager)\b/i,
+    /\b(software|programmer|full[- ]?stack|front[- ]?end|back[- ]?end|web developer|mobile developer|app developer|application developer|android|ios developer|flutter|react|angular|vue|node\.?js|java|python|\.net|c#|c\+\+|php|laravel|golang|devops|sre|site reliability|qa engineer|qa intern|qa trainee|software qa|sqa|quality assurance engineer|test automation|automation engineer|sdet|ui\/ux|ux designer|ui engineer|data engineer|data scien\w*|machine learning|ml engineer|ai engineer|ai\/ml|cloud engineer|platform engineer|solutions? architect|software architect|tech lead|technical lead|engineering manager|blockchain|game developer|unity developer|salesforce|odoo|sap developer)\b/i,
   it:
     /\b(information technology|network|system admin|systems? administrator|sysadmin|helpdesk|help desk|technical support|it support|desktop support|cyber ?security|security engineer|soc analyst|database|dba|erp|business analyst|data analyst|bi developer|cloud|infrastructure|computer)\b/i,
 };
@@ -14,7 +14,7 @@ export function classify(title = '', extra = '') {
   const cats = [];
   if (RX.intern.test(t)) cats.push('intern');
   if (RX.associate.test(t)) cats.push('associate');
-  if (RX.software.test(t) || /\bengineer\b/i.test(t) && RX.software.test(extra)) cats.push('software');
+  if (RX.software.test(t) || (/\b(developer|engineer|qa|tester)\b/i.test(t) && /\b(software|web|mobile|app|IT|computer|code|programming|cloud|api)\b/i.test(extra))) cats.push('software');
   if (RX.it.test(t) || /\b(IT|ICT)\b/.test(t)) cats.push('it');
   return cats;
 }

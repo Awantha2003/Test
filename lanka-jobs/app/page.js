@@ -37,18 +37,18 @@ export default async function Home({ searchParams }) {
   const page = Math.max(1, Number(sp.page) || 1);
   const sql = db();
 
-  const where = sql`
+  const where = () => sql`
     where (${cat} = '' or ${cat} = any(j.categories))
       and (${q} = '' or j.title ilike ${'%' + q + '%'} or j.company ilike ${'%' + q + '%'})
       and (${src} = '' or j.source = ${src} or (${src} = 'career' and j.source like 'career:%'))
-      and (${days} = '' or j.first_seen > now() - (${days || '0'} || ' days')::interval)
+      and (${days} = '' or j.first_seen > now() - make_interval(days => ${Number(days) || 0}::int))
       and (j.closing_at is null or j.closing_at > now() - interval '1 day')
       and j.last_seen > now() - interval '21 days'`;
 
   const [jobs, [{ total }], stats, sources, lastRun] = await Promise.all([
-    sql`select j.*, a.id as app_id from jobs j left join applications a on a.job_id = j.id ${where}
+    sql`select j.*, a.id as app_id from jobs j left join applications a on a.job_id = j.id ${where()}
         order by j.first_seen desc, j.id desc limit ${PAGE} offset ${(page - 1) * PAGE}`,
-    sql`select count(*)::int as total from jobs j ${where}`,
+    sql`select count(*)::int as total from jobs j ${where()}`,
     sql`select
           count(*) filter (where first_seen > now() - interval '24 hours')::int as today,
           count(*) filter (where 'intern' = any(categories))::int as interns,

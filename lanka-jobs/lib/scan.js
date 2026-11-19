@@ -44,6 +44,7 @@ export async function runScan({ notify = true } = {}) {
 
   // 3) Classify + keep relevant
   const rows = [];
+  const irrelevant = [];
   const uniq = new Map();
   for (const j of all) {
     if (!j.title || !j.url || !j.external_id) continue;
@@ -54,7 +55,10 @@ export async function runScan({ notify = true } = {}) {
   }
   for (const j of uniq.values()) {
     const cats = classify(j.title, j.description || '');
-    if (!isRelevant(cats, { techSource: j.techSource })) continue;
+    if (!isRelevant(cats, { techSource: j.techSource })) {
+      irrelevant.push(`${j.source}|${String(j.external_id).slice(0, 500)}`);
+      continue;
+    }
     rows.push({
       source: j.source,
       external_id: String(j.external_id).slice(0, 500),
@@ -86,9 +90,15 @@ export async function runScan({ notify = true } = {}) {
     const batch = rows.slice(i, i + 200);
     const res = await sql`
       insert into jobs ${sql(batch, 'source', 'external_id', 'title', 'company', 'location', 'url', 'description', 'posted_at', 'closing_at', 'categories')}
-      on conflict (source, external_id) do update set last_seen = now(), title = excluded.title
+      on conflict (source, external_id) do update set last_seen = now(), title = excluded.title, categories = excluded.categories
       returning id, source, external_id, title, company, location, url, categories, posted_at, (xmax = 0) as is_new`;
     inserted.push(...res.filter((r) => r.is_new));
+  }
+
+  // Drop listings that no longer pass the relevance filter (unless you applied to them)
+  if (irrelevant.length) {
+    await sql`delete from jobs j where (j.source || '|' || j.external_id) = any(${irrelevant})
+              and not exists (select 1 from applications a where a.job_id = j.id)`;
   }
 
   // 5) Notify
