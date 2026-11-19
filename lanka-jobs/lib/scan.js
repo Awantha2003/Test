@@ -2,7 +2,7 @@ import { db, getSettings, setSetting } from './db.js';
 import { BOARDS } from './sources/boards.js';
 import { scanCompany } from './sources/careers.js';
 import { classify, isRelevant, matchesNotify } from './classify.js';
-import { sendMessage, formatJobs } from './telegram.js';
+import { sendMessage, formatJobs, tgCall } from './telegram.js';
 
 const withTimeout = (p, ms, label) =>
   Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`${label} timed out`)), ms))]);
@@ -103,6 +103,21 @@ export async function runScan({ notify = true } = {}) {
 
   // 5) Notify
   const settings = await getSettings();
+  // Auto-link Telegram: once the user presses Start on the bot, remember their chat.
+  if (settings.telegram_token && !settings.telegram_chat_id) {
+    try {
+      const updates = await tgCall(settings.telegram_token, 'getUpdates', { limit: 50 });
+      const msg = [...updates].reverse().find((u) => u.message?.chat?.id);
+      if (msg) {
+        settings.telegram_chat_id = String(msg.message.chat.id);
+        await setSetting('telegram_chat_id', settings.telegram_chat_id);
+        await sendMessage(settings.telegram_token, settings.telegram_chat_id,
+          '✅ <b>Lanka Jobs connected!</b>\nNew SE / IT / internship jobs in Sri Lanka will arrive here every 5 minutes.');
+      }
+    } catch (e) {
+      report.telegram = { ok: false, error: String(e.message || e) };
+    }
+  }
   const firstRun = settings.baseline_done !== 'yes';
   let sent = 0;
   if (inserted.length) {
