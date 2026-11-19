@@ -44,12 +44,15 @@ export async function runScan({ notify = true } = {}) {
 
   // 3) Classify + keep relevant
   const rows = [];
-  const seen = new Set();
+  const uniq = new Map();
   for (const j of all) {
     if (!j.title || !j.url || !j.external_id) continue;
     const key = `${j.source}|${j.external_id}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    const prev = uniq.get(key);
+    if (prev) prev.techSource = prev.techSource || j.techSource;
+    else uniq.set(key, { ...j });
+  }
+  for (const j of uniq.values()) {
     const cats = classify(j.title, j.description || '');
     if (!isRelevant(cats, { techSource: j.techSource })) continue;
     rows.push({
@@ -67,13 +70,24 @@ export async function runScan({ notify = true } = {}) {
   }
 
   // 4) Upsert; collect new ones
+  const known = new Set((await sql`select distinct source from jobs`).map((r) => r.source));
+  // Most boards use increasing numeric IDs. A listing whose ID is not higher than the
+  // highest one we've already stored is an old post we just hadn't seen before.
+  const maxIds = Object.fromEntries(
+    (await sql`select source, max(external_id::numeric) as m from jobs
+               where external_id ~ '^[0-9]{1,30}$' group by source`).map((r) => [r.source, Number(r.m)])
+  );
+  const isNewer = (j) => {
+    const id = Number(String(j.external_id));
+    return !Number.isFinite(id) || !maxIds[j.source] || id > maxIds[j.source];
+  };
   let inserted = [];
   for (let i = 0; i < rows.length; i += 200) {
     const batch = rows.slice(i, i + 200);
     const res = await sql`
       insert into jobs ${sql(batch, 'source', 'external_id', 'title', 'company', 'location', 'url', 'description', 'posted_at', 'closing_at', 'categories')}
       on conflict (source, external_id) do update set last_seen = now(), title = excluded.title
-      returning id, source, title, company, location, url, categories, (xmax = 0) as is_new`;
+      returning id, source, external_id, title, company, location, url, categories, posted_at, (xmax = 0) as is_new`;
     inserted.push(...res.filter((r) => r.is_new));
   }
 
@@ -87,7 +101,9 @@ export async function runScan({ notify = true } = {}) {
       // First ever scan: don't flood Telegram with hundreds of existing jobs.
       await sql`update jobs set notified = true where id = any(${ids})`;
     } else if (notify && settings.telegram_token && settings.telegram_chat_id) {
-      const toSend = inserted.filter((j) => matchesNotify(j, settings));
+      const fresh = (j) => !j.posted_at || Date.now() - new Date(j.posted_at).getTime() < 3 * 86400000;
+      // A source scanned for the first time (e.g. a newly added career page) only sets a baseline.
+      const toSend = inserted.filter((j) => known.has(j.source) && fresh(j) && isNewer(j) && matchesNotify(j, settings));
       if (toSend.length) {
         const site = process.env.SITE_URL || '';
         try {

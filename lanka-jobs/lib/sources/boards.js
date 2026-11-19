@@ -61,11 +61,24 @@ const slugify = (s) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
+const XPRESS_KEYWORDS = ['intern', 'software engineer', 'developer', 'associate software'];
+
 export async function xpress() {
   const out = [];
-  for (const sec of XPRESS_SECTORS) {
-    const list = await fetchJson(`https://xpress.jobs/api/jobs/searchJobs?sectors=${sec.id}&page=1&pageSize=100`, { timeout: 20000 });
-    for (const j of list || []) {
+  // The API returns pages in an unstable order, so we also run keyword searches to cover everything.
+  const queries = [
+    ...XPRESS_SECTORS.map((s) => ({ q: `sectors=${s.id}`, tech: s.tech })),
+    ...XPRESS_KEYWORDS.map((k) => ({ q: `keyword=${encodeURIComponent(k)}`, tech: false })),
+  ];
+  await Promise.all(queries.map(async (sec) => {
+    const list = [];
+    for (let page = 1; page <= 2; page++) {
+      const part = await fetchJson(`https://xpress.jobs/api/jobs/searchJobs?${sec.q}&page=${page}&pageSize=100`, { timeout: 20000 });
+      if (!part?.length) break;
+      list.push(...part);
+      if (part.length < 100 || list.length >= (part[0].recordCount || 0)) break;
+    }
+    for (const j of list) {
       out.push({
         source: 'xpress.jobs',
         external_id: String(j.jobId),
@@ -79,7 +92,7 @@ export async function xpress() {
         techSource: sec.tech,
       });
     }
-  }
+  }));
   return out;
 }
 
