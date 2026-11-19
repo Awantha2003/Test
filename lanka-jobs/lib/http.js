@@ -1,7 +1,37 @@
 export const UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 
-export async function fetchText(url, { timeout = 15000, headers = {} } = {}) {
+// Some sites (Cloudflare-protected) block Vercel's IPs. When that happens we
+// fetch the page through Supabase (pg_net), which those sites accept.
+async function relayFetch(url, timeout) {
+  const { db } = await import('./db.js');
+  const sql = db();
+  const [{ id }] = await sql`select lankajobs.relay_request(${url}) as id`;
+  const until = Date.now() + Math.min(timeout + 5000, 25000);
+  while (Date.now() < until) {
+    await new Promise((r) => setTimeout(r, 700));
+    const rows = await sql`select * from lankajobs.relay_result(${id})`;
+    if (rows.length) {
+      const r = rows[0];
+      if (r.error_msg) throw new Error(`relay: ${r.error_msg}`);
+      if (r.status_code >= 400) throw new Error(`HTTP ${r.status_code} for ${url} (relay)`);
+      return r.content;
+    }
+  }
+  throw new Error(`relay timed out for ${url}`);
+}
+
+export async function fetchText(url, opts = {}) {
+  try {
+    return await directFetch(url, opts);
+  } catch (e) {
+    const blocked = /HTTP (403|429|503|520|521|522|523|525|526)\b/.test(e.message) || /fetch failed|aborted/i.test(e.message);
+    if (!blocked || opts.noRelay || !process.env.DATABASE_URL) throw e;
+    return relayFetch(url, opts.timeout || 15000);
+  }
+}
+
+async function directFetch(url, { timeout = 15000, headers = {} } = {}) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), timeout);
   try {

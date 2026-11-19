@@ -17,7 +17,7 @@ export async function runScan({ notify = true } = {}) {
   // 1) Job boards
   const boardTasks = Object.entries(BOARDS).map(async ([name, fn]) => {
     try {
-      const jobs = await withTimeout(fn(), 40000, name);
+      const jobs = await withTimeout(fn(), 55000, name);
       report[name] = { ok: true, found: jobs.length };
       all.push(...jobs);
     } catch (e) {
@@ -29,7 +29,7 @@ export async function runScan({ notify = true } = {}) {
   const companies = await sql`select * from companies where enabled order by id`;
   const companyTasks = companies.map(async (c) => {
     try {
-      const jobs = await withTimeout(scanCompany(c), 25000, c.name);
+      const jobs = await withTimeout(scanCompany(c), 35000, c.name);
       all.push(...jobs);
       await sql`update companies set last_ok = now(), last_error = null, last_count = ${jobs.length} where id = ${c.id}`;
       report[`career:${c.name}`] = { ok: true, found: jobs.length };

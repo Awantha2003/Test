@@ -71,8 +71,10 @@ async function recruitee(c) {
 }
 
 // Generic career page: pick out links whose text looks like a job title.
-const ROLE = /(engineer|developer|intern|internship|trainee|qa\b|quality|analyst|devops|designer|architect|lead|consultant|specialist|administrator|scientist|manager|executive|programmer|tester|support)/i;
+const ROLE = /(engineer|developer|intern\b|internship|trainee|\bqa\b|quality assurance|analyst|devops|designer|architect|tech(nical)? lead|consultant|specialist|administrator|scientist|programmer|tester|associate|executive|manager)/i;
 const NAV = /^(home|about|contact|blog|news|careers?|jobs?|apply|login|sign ?in|read more|learn more|view all|see all|privacy|cookie|terms)$/i;
+const JUNK = /(leadership|contact|services?|solutions?|case stud|our team|about us|products?|platform|industr|insights|talk to|book a|demo|webinar|whitepaper|blog|news|events?|partners?|locations?|offices?|don'?t see|general application|open application)/i;
+const JOB_URL = /(career|job|vacanc|position|opening|apply|recruit|lever\.co|workable|greenhouse|smartrecruiters|bamboohr|zohorecruit|breezy|teamtailor|myworkdayjobs|hire|\/o\/)/i;
 
 async function html(c) {
   const page = await fetchText(c.careers_url, { timeout: 15000 });
@@ -82,7 +84,7 @@ async function html(c) {
   const out = [];
   $('a[href]').each((_, a) => {
     const text = clean($(a).text());
-    if (text.length < 4 || text.length > 120 || NAV.test(text) || !ROLE.test(text)) return;
+    if (text.length < 4 || text.length > 120 || NAV.test(text) || JUNK.test(text) || !ROLE.test(text)) return;
     let href = $(a).attr('href');
     if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('javascript:')) return;
     try {
@@ -90,6 +92,8 @@ async function html(c) {
     } catch {
       return;
     }
+    const pth = new URL(href).pathname + new URL(href).hostname;
+    if (!JOB_URL.test(pth) || href.replace(/\/$/, '') === c.careers_url.replace(/\/$/, '')) return;
     if (seen.has(href)) return;
     seen.add(href);
     out.push({ external_id: href, title: text, location: 'Sri Lanka', url: href });
@@ -102,7 +106,7 @@ const KINDS = { lever, greenhouse, workable, smartrecruiters, recruitee, html };
 export async function scanCompany(c) {
   const fn = KINDS[c.kind];
   if (!fn) throw new Error(`Unknown kind ${c.kind}`);
-  const jobs = await fn(c);
+  const jobs = (await fn(c)).filter((j) => j.title && !JUNK.test(j.title));
   return jobs.map((j) => ({
     ...j,
     title: clean(j.title),

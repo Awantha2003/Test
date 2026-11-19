@@ -1,7 +1,7 @@
 import { runScan } from '@/lib/scan';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 function authorized(req) {
   const secret = process.env.CRON_SECRET;
