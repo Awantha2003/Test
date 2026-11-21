@@ -1,4 +1,4 @@
-# Air Writer
+# Shenu System
 
 Write capital letters in the air with your index finger; the webcam reads them and builds words.
 
