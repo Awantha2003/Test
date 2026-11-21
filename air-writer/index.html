@@ -34,6 +34,13 @@ main{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:minmax(0,
 .stage{position:relative;background:var(--slate);border-radius:14px;overflow:hidden;aspect-ratio:4/3;width:100%}
 .stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .stage video{transform:scaleX(-1);opacity:.55}
+.stage.flipped video{transform:none}
+.controls{display:flex;flex-wrap:wrap;gap:10px 24px;align-items:center;margin-top:12px}
+.ctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.9rem}
+.ctl input[type=range]{width:160px;accent-color:var(--accent)}
+.ctl input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.ctl .val{font:500 .9rem var(--f-mono);min-width:4ch}
+.ctl .hint{color:var(--muted);font-size:.8rem;flex-basis:100%;padding-left:26px}
 .stage canvas{touch-action:none;cursor:crosshair}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--accent-soft);color:var(--fg)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
@@ -102,6 +109,14 @@ ul.list button{padding:3px 8px;font-size:.8rem}
         <button id="mouseBtn" style="background:transparent;color:#e8edf5;border-color:#3a4a62">Try with mouse instead</button>
         <div class="msg" id="startMsg" style="color:#b5c0d2"></div>
       </div>
+    </div>
+    <div class="controls">
+      <label class="ctl" for="sens"><span class="label">Sensitivity</span>
+        <input type="range" id="sens" min="1" max="2.5" step="0.1" value="1.6">
+        <span id="sensVal" class="val">1.6×</span></label>
+      <label class="ctl" for="flip"><input type="checkbox" id="flip"> <span>Flip left/right</span>
+        <span class="hint">Turn on if the dot moves the opposite way to your hand</span></label>
+      <span class="hint" style="padding-left:0;flex-basis:100%">Keep your hand inside the dashed box on the camera. Higher sensitivity = smaller hand movements.</span>
     </div>
     <div class="gestures">
       <div class="g"><b>1 finger up</b><span>Pen down. Write the whole letter in one go, like A: up, down, back to the middle, across.</span></div>
@@ -444,6 +459,10 @@ function updateTrainInfo(){const L=$('trainSel').value; const n=store.get('airwr
   $('trainInfo').textContent=n>=3?`${n} samples of ${L} saved. Pick the next letter.`:`${n} samples of ${L} saved. Write it ${3-n} more time${3-n===1?'':'s'}.`;}
 $('trainBtn').onclick=()=>{training=!training;$('trainBtn').setAttribute('aria-pressed',training);$('trainRow').hidden=!training;
   $('trainBtn').textContent=training?'Stop training':'Train my handwriting'; if(training){updateTrainInfo();setMsg('Training: write the chosen letter 3 times.');} else setMsg('Training finished.');};
+// sensitivity + flip
+function applySettings(){$('sens').value=sens;$('sensVal').textContent=sens.toFixed(1)+'×';$('flip').checked=flip;$('stage').classList.toggle('flipped',flip);}
+$('sens').addEventListener('input',e=>{sens=+e.target.value;store.set('airwriter.sens',sens);applySettings();});
+$('flip').addEventListener('change',e=>{flip=e.target.checked;store.set('airwriter.flip',flip);tip=null;fx.reset();fy.reset();applySettings();});
 // controls
 $('fixSel').innerHTML=LETTERS.map(l=>`<option>${l}</option>`).join('');
 $('trainSel').innerHTML=$('fixSel').innerHTML; $('trainSel').onchange=updateTrainInfo;
@@ -528,13 +547,27 @@ function classify(lm){
 function pickHand(hands){
   if(!hands.length) return null;
   if(hands.length===1||!tip) return hands[0];
-  const W=canvas.width,H=canvas.height; let best=hands[0],bd=Infinity;
-  for(const h of hands){const d=Math.hypot((1-h[8].x)*W-tip.x,h[8].y*H-tip.y); if(d<bd){bd=d;best=h;}}
+  let best=hands[0],bd=Infinity;
+  for(const h of hands){const q=toScreen(rawOf(h[8])); const d=Math.hypot(q.x-tip.x,q.y-tip.y); if(d<bd){bd=d;best=h;}}
   return best;
 }
 let fpsT=[], fps=0;
 function countFps(now){fpsT.push(now); while(fpsT.length&&now-fpsT[0]>1000) fpsT.shift(); fps=fpsT.length;}
 let glitch=0, nearEdge=false, lastEdge=false;
+// One Euro filter: steady when the finger moves slowly, quick when it moves fast
+class OneEuro{constructor(mc,b,dc=1){this.mc=mc;this.b=b;this.dc=dc;this.reset();}
+  reset(){this.x=null;this.dx=0;this.t=null;}
+  a(c,dt){const r=2*Math.PI*c*dt;return r/(r+1);}
+  f(x,t){if(this.x===null){this.x=x;this.t=t;return x;} const dt=Math.max(1e-3,(t-this.t)/1000); this.t=t;
+    this.dx+=this.a(this.dc,dt)*((x-this.x)/dt-this.dx); this.x+=this.a(this.mc+this.b*Math.abs(this.dx),dt)*(x-this.x); return this.x;}}
+const fx=new OneEuro(0.7,30), fy=new OneEuro(0.7,30);
+let sens=+store.get('airwriter.sens',1.6), flip=!!store.get('airwriter.flip',false), lastRaw=null, rawPt=null;
+// the writing box: the part of the camera picture that covers the whole screen
+function zone(){const w=1/sens,h=1/sens; const cx=.5,cy=.45;
+  const x0=Math.min(1-w,Math.max(0,cx-w/2)), y0=Math.min(1-h,Math.max(0,cy-h/2)); return {x0,y0,w,h};}
+function rawOf(lm8){return {x:flip?lm8.x:1-lm8.x, y:lm8.y};}   // position as you see it on screen, 0..1
+function toScreen(r){const z=zone(),W=canvas.width,H=canvas.height;
+  return {x:Math.min(1,Math.max(0,(r.x-z.x0)/z.w))*W, y:Math.min(1,Math.max(0,(r.y-z.y0)/z.h))*H};}
 let penUpAt=null, stillAnchor=null, stillSince=null, needMove=false, recent=[];
 function commitStroke(){
   if(!current) return;
@@ -551,18 +584,13 @@ function handleHand(lm,now){
   if(postureCount>=need) posture=raw;
 
   if(lm){
-    const rx=1-lm[8].x, ry=lm[8].y;
-    nearEdge=rx<.04||rx>.96||ry<.04||ry>.96;
-    const p={x:Math.min(W,Math.max(0,rx*W)),y:Math.min(H,Math.max(0,ry*H))};
-    // a sudden jump across the screen is almost always a tracking glitch: skip up to 3 such frames
-    if(tip&&dist(p,tip)>0.2*Math.max(W,H)&&glitch<3){glitch++;return;}
-    glitch=0;
-    if(!tip) tip=p; else{
-      // adaptive smoothing: steady when slow, responsive when fast
-      const sp=dist(tip,p)/sc, a=Math.min(.85,Math.max(.22,.22+sp/45));
-      tip={x:tip.x+(p.x-tip.x)*a,y:tip.y+(p.y-tip.y)*a};
-    }
-  } else tip=null;
+    const r=rawOf(lm[8]);
+    // a sudden jump across the picture is almost always a tracking glitch: skip up to 3 such frames
+    if(lastRaw&&Math.hypot(r.x-lastRaw.x,r.y-lastRaw.y)>0.2&&glitch<3){glitch++;return;}
+    glitch=0; lastRaw=r; rawPt=r;
+    const z=zone(); nearEdge=r.x<z.x0-.02||r.x>z.x0+z.w+.02||r.y<z.y0-.02||r.y>z.y0+z.h+.02||r.x<.03||r.x>.97||r.y<.03||r.y>.97;
+    tip=toScreen({x:fx.f(r.x,now),y:fy.f(r.y,now)});
+  } else {tip=null; lastRaw=null; rawPt=null; fx.reset(); fy.reset();}
 
   // hold the finger still for ~1 s while writing = letter finished
   if(tip){
@@ -596,11 +624,11 @@ function handleHand(lm,now){
 
   if(posture!==prev||needMove||nearEdge!==lastEdge){
     lastEdge=nearEdge;
-    $('poseTxt').textContent=nearEdge&&lm?'Move your hand toward the middle':needMove&&posture==='draw'?'Move to start next letter':POSE_TXT[posture];
+    $('poseTxt').textContent=nearEdge&&lm?'Keep your hand inside the box':needMove&&posture==='draw'?'Move to start next letter':POSE_TXT[posture];
     $('poseDot').style.background={draw:'#4fd08f',lift:'#f0a94a',open:'#7aa2ff',fist:'#ff6b7d',none:'#93a0b5'}[posture];}
 }
 
-window.AW.hand=(lm,t)=>handleHand(lm,t); window.AW.pickHand=pickHand; window.AW.word=()=>word;
+window.AW.hand=(lm,t)=>handleHand(lm,t); window.AW.pickHand=pickHand; window.AW.tip=()=>tip; window.AW.word=()=>word;
 // ---------- render loop ----------
 function drawStroke(s,color,w){
   if(s.length<2) return; ctx.strokeStyle=color; ctx.lineWidth=w; ctx.lineCap='round'; ctx.lineJoin='round';
@@ -619,6 +647,11 @@ function loop(){
   if(current) drawStroke(current,ink,9*scale);
   ctx.shadowBlur=0;
   if(ghost){const a=1-(now-ghost.t)/1200; if(a<=0) ghost=null; else{ctx.globalAlpha=a*.5; for(const s of ghost.strokes) drawStroke(s,'#ffffff',6*scale); ctx.globalAlpha=1;}}
+  if(running&&sens>1.01){ const z=zone(),W=canvas.width,H=canvas.height;
+    ctx.setLineDash([8*scale,6*scale]); ctx.lineWidth=2*scale; ctx.strokeStyle=nearEdge?'rgba(255,107,125,.8)':'rgba(255,255,255,.45)';
+    ctx.strokeRect(z.x0*W,z.y0*H,z.w*W,z.h*H); ctx.setLineDash([]);
+    if(rawPt){ctx.beginPath();ctx.arc(rawPt.x*W,rawPt.y*H,5*scale,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,.5)';ctx.fill();}
+  }
   if(running){ // which fingers the camera sees as up
     const keys=[['i','Index'],['m','Middle'],['r','Ring'],['p','Pinky']], bx=12*scale, by=canvas.height-34*scale;
     ctx.font=`600 ${Math.round(11*scale)}px Inter,sans-serif`; ctx.textBaseline='middle'; ctx.textAlign='left';
@@ -644,7 +677,7 @@ function loop(){
   }
   requestAnimationFrame(loop);
 }
-renderWord(); renderList(); renderCands(); requestAnimationFrame(loop);
+applySettings(); renderWord(); renderList(); renderCands(); requestAnimationFrame(loop);
 </script>
 </body>
 </html>
